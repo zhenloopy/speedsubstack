@@ -6,7 +6,14 @@ export class Highlighter {
   private styleElement: HTMLStyleElement | null = null;
   private scrollContainer: HTMLElement | null = null;
   private boundScrollHandler: (() => void) | null = null;
+  private boundResizeHandler: (() => void) | null = null;
   private rafId: number | null = null;
+  private resizeRafId: number | null = null;
+  
+  // Cached nav elements to avoid repeated DOM queries
+  private topNav: HTMLElement | null = null;
+  private bottomNav: HTMLElement | null = null;
+  private navsCached = false;
 
   constructor() {
     this.injectStyles();
@@ -95,21 +102,26 @@ export class Highlighter {
     }
   }
 
-  private getVisibleContentBounds(): { top: number; bottom: number } | null {
-    // Check for Substack reader nav bars
-    const topNav = document.querySelector<HTMLElement>('[class*="nav-"][class*="pc-display-flex"][class*="pc-justifyContent-space-between"]');
-    const bottomNav = document.querySelector<HTMLElement>('[class*="bottomNav-"]');
+  private cacheNavElements(): void {
+    if (this.navsCached) return;
+    this.topNav = document.querySelector<HTMLElement>('[class*="nav-"][class*="pc-display-flex"][class*="pc-justifyContent-space-between"]');
+    this.bottomNav = document.querySelector<HTMLElement>('[class*="bottomNav-"]');
+    this.navsCached = true;
+  }
 
+  private getVisibleContentBounds(): { top: number; bottom: number } | null {
+    this.cacheNavElements();
+    
     let top = 0;
     let bottom = window.innerHeight;
 
-    if (topNav) {
-      const topNavRect = topNav.getBoundingClientRect();
+    if (this.topNav) {
+      const topNavRect = this.topNav.getBoundingClientRect();
       top = topNavRect.bottom;
     }
 
-    if (bottomNav) {
-      const bottomNavRect = bottomNav.getBoundingClientRect();
+    if (this.bottomNav) {
+      const bottomNavRect = this.bottomNav.getBoundingClientRect();
       bottom = bottomNavRect.top;
     }
 
@@ -134,8 +146,17 @@ export class Highlighter {
       });
     };
 
+    this.boundResizeHandler = () => {
+      if (this.resizeRafId !== null) return;
+      this.resizeRafId = requestAnimationFrame(() => {
+        this.resizeRafId = null;
+        this.updateHighlightPosition();
+      });
+    };
+
     // Listen on both window and scroll container
     window.addEventListener('scroll', this.boundScrollHandler, { passive: true });
+    window.addEventListener('resize', this.boundResizeHandler, { passive: true });
     if (this.scrollContainer && this.scrollContainer !== document.documentElement) {
       this.scrollContainer.addEventListener('scroll', this.boundScrollHandler, { passive: true });
     }
@@ -149,9 +170,17 @@ export class Highlighter {
       }
       this.boundScrollHandler = null;
     }
+    if (this.boundResizeHandler) {
+      window.removeEventListener('resize', this.boundResizeHandler);
+      this.boundResizeHandler = null;
+    }
     if (this.rafId !== null) {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
+    }
+    if (this.resizeRafId !== null) {
+      cancelAnimationFrame(this.resizeRafId);
+      this.resizeRafId = null;
     }
   }
 
@@ -163,6 +192,10 @@ export class Highlighter {
     }
     this.currentWord = null;
     this.scrollContainer = null;
+    // Reset nav cache for next highlight
+    this.navsCached = false;
+    this.topNav = null;
+    this.bottomNav = null;
   }
 
   scrollToHighlight(): void {

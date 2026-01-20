@@ -4,25 +4,34 @@ export interface Settings {
   fontSize: number;
   rampTime: number;
   startingWpm: number;
+  autostartDelay: number;
 }
 
-const DEFAULT_SETTINGS: Settings = {
+export const DEFAULT_SETTINGS: Settings = {
   wpm: 300,
   activationMode: 'manual',
-  fontSize: 64,
-  rampTime: 10,
-  startingWpm: 100,
+  fontSize: 92,
+  rampTime: 20,
+  startingWpm: 150,
+  autostartDelay: 1,
 };
+
+export async function resetAllSettings(): Promise<void> {
+  return new Promise((resolve) => {
+    chrome.storage.local.set(DEFAULT_SETTINGS, resolve);
+  });
+}
 
 export async function loadSettings(): Promise<Settings> {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['wpm', 'activationMode', 'fontSize', 'rampTime', 'startingWpm'], (result) => {
+    chrome.storage.local.get(['wpm', 'activationMode', 'fontSize', 'rampTime', 'startingWpm', 'autostartDelay'], (result) => {
       resolve({
         wpm: result.wpm ?? DEFAULT_SETTINGS.wpm,
         activationMode: result.activationMode ?? DEFAULT_SETTINGS.activationMode,
         fontSize: result.fontSize ?? DEFAULT_SETTINGS.fontSize,
         rampTime: result.rampTime ?? DEFAULT_SETTINGS.rampTime,
         startingWpm: result.startingWpm ?? DEFAULT_SETTINGS.startingWpm,
+        autostartDelay: result.autostartDelay ?? DEFAULT_SETTINGS.autostartDelay,
       });
     });
   });
@@ -62,6 +71,9 @@ export function onSettingsChange(
     }
     if (changes.startingWpm) {
       settingsChanges.startingWpm = changes.startingWpm.newValue;
+    }
+    if (changes.autostartDelay) {
+      settingsChanges.autostartDelay = changes.autostartDelay.newValue;
     }
 
     if (Object.keys(settingsChanges).length > 0) {

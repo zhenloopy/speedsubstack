@@ -18,7 +18,7 @@ import { findNextParagraphIndex, findPreviousParagraphIndex } from './engine/nav
 class SpeedSubstackApp {
   private extractionResult: ExtractionResult | null = null;
   private articleContainer: HTMLElement | null = null;
-  private settings: Settings = { wpm: 300, activationMode: 'manual', fontSize: 64, rampTime: 10 };
+  private settings: Settings = { wpm: 300, activationMode: 'manual', fontSize: 64, rampTime: 10, startingWpm: 150, autostartDelay: 1 };
 
   private overlay: Overlay;
   private controls: Controls;
@@ -33,6 +33,7 @@ class SpeedSubstackApp {
   private unsubscribeSettings: (() => void) | null = null;
   private autoPlayTimer: number | null = null;
   private showAndPlayTimer: number | null = null;
+  private visibilityResumeTimer: number | null = null;
   
   // Store bound handlers for cleanup
   private boundCloseHandler: (() => void) | null = null;
@@ -95,6 +96,11 @@ class SpeedSubstackApp {
     // Pause when tab becomes hidden, resume when visible
     this.boundVisibilityHandler = () => {
       if (document.hidden) {
+        // Clear any pending resume timer
+        if (this.visibilityResumeTimer !== null) {
+          clearTimeout(this.visibilityResumeTimer);
+          this.visibilityResumeTimer = null;
+        }
         this.wasPlayingBeforeHidden = this.timingController.getIsPlaying();
         if (this.wasPlayingBeforeHidden) {
           this.timingController.pause();
@@ -102,11 +108,23 @@ class SpeedSubstackApp {
           this.controls.setPlaying(false);
         }
       } else {
-        // Resume if was playing before
-        if (this.wasPlayingBeforeHidden && this.stateMachine.getState() === 'paused') {
-          this.timingController.play();
-          this.stateMachine.startReading();
-          this.controls.setPlaying(true);
+        // Resume if was playing before, with configurable delay
+        if (this.wasPlayingBeforeHidden && this.stateMachine.getState() === 'paused' && this.overlay.isVisible()) {
+          const delayMs = this.settings.autostartDelay * 1000;
+          if (delayMs === 0) {
+            this.timingController.play();
+            this.stateMachine.startReading();
+            this.controls.setPlaying(true);
+          } else {
+            this.visibilityResumeTimer = window.setTimeout(() => {
+              this.visibilityResumeTimer = null;
+              if (this.wasPlayingBeforeHidden && this.stateMachine.getState() === 'paused') {
+                this.timingController.play();
+                this.stateMachine.startReading();
+                this.controls.setPlaying(true);
+              }
+            }, delayMs);
+          }
         }
       }
     };
@@ -139,6 +157,9 @@ class SpeedSubstackApp {
       if (changes.rampTime !== undefined) {
         this.settings.rampTime = changes.rampTime;
         this.timingController.setRampTime(changes.rampTime);
+      }
+      if (changes.autostartDelay !== undefined) {
+        this.settings.autostartDelay = changes.autostartDelay;
       }
     });
 
@@ -188,11 +209,13 @@ class SpeedSubstackApp {
     // Enable keyboard handler globally after article detection
     this.keyboardHandler.enable();
 
+    // Always create start button (needed for re-enabling reader after closing)
+    this.startButton.create();
+    this.startButton.setHasProgress(hasProgress);
+
     if (this.settings.activationMode === 'auto') {
       this.startReading();
     } else {
-      this.startButton.create();
-      this.startButton.setHasProgress(hasProgress);
       this.startButton.show();
     }
   }
@@ -204,14 +227,20 @@ class SpeedSubstackApp {
     this.stateMachine.transition('paused');
     this.controls.setPlaying(false);
     
-    // Auto-play after 3 seconds
-    this.autoPlayTimer = window.setTimeout(() => {
-      this.autoPlayTimer = null;
-      if (this.stateMachine.getState() === 'paused') {
-        this.timingController.play();
-        this.stateMachine.startReading();
-      }
-    }, 3000);
+    // Auto-play after configurable delay
+    const delayMs = this.settings.autostartDelay * 1000;
+    if (delayMs === 0) {
+      this.timingController.play();
+      this.stateMachine.startReading();
+    } else {
+      this.autoPlayTimer = window.setTimeout(() => {
+        this.autoPlayTimer = null;
+        if (this.stateMachine.getState() === 'paused') {
+          this.timingController.play();
+          this.stateMachine.startReading();
+        }
+      }, delayMs);
+    }
   }
 
   private showAndPlay(): void {
@@ -228,15 +257,24 @@ class SpeedSubstackApp {
       this.stateMachine.hideArticle();
     }
     
-    // Wait 0.5 seconds then start playing
-    this.showAndPlayTimer = window.setTimeout(() => {
-      this.showAndPlayTimer = null;
+    // Start playing after configurable delay
+    const delayMs = this.settings.autostartDelay * 1000;
+    if (delayMs === 0) {
       if (!this.timingController.getIsPlaying()) {
         this.timingController.play();
         this.stateMachine.startReading();
         this.controls.setPlaying(true);
       }
-    }, 500);
+    } else {
+      this.showAndPlayTimer = window.setTimeout(() => {
+        this.showAndPlayTimer = null;
+        if (!this.timingController.getIsPlaying()) {
+          this.timingController.play();
+          this.stateMachine.startReading();
+          this.controls.setPlaying(true);
+        }
+      }, delayMs);
+    }
   }
 
   private closeReader(): void {
@@ -248,17 +286,20 @@ class SpeedSubstackApp {
       clearTimeout(this.showAndPlayTimer);
       this.showAndPlayTimer = null;
     }
+    if (this.visibilityResumeTimer !== null) {
+      clearTimeout(this.visibilityResumeTimer);
+      this.visibilityResumeTimer = null;
+    }
     this.saveCurrentProgress();
     this.timingController.pause();
     this.stateMachine.stop();
     this.overlay.hide();
     this.scrollController.disable();
 
-    if (this.settings.activationMode === 'manual') {
-      this.startButton.show();
-      // Show current word button since user has progress
-      this.startButton.setHasProgress(true);
-    }
+    // Always show start button when reader is closed (both manual and auto modes)
+    this.startButton.show();
+    // Show current word button since user has progress
+    this.startButton.setHasProgress(true);
   }
 
   private goToCurrentWord(): void {
@@ -387,6 +428,10 @@ class SpeedSubstackApp {
     if (this.showAndPlayTimer !== null) {
       clearTimeout(this.showAndPlayTimer);
       this.showAndPlayTimer = null;
+    }
+    if (this.visibilityResumeTimer !== null) {
+      clearTimeout(this.visibilityResumeTimer);
+      this.visibilityResumeTimer = null;
     }
 
     this.saveCurrentProgress();

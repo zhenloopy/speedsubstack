@@ -1,4 +1,4 @@
-import { loadSettings, saveSetting, type Settings } from '../storage/settings';
+import { loadSettings, saveSetting, resetAllSettings, DEFAULT_SETTINGS, type Settings } from '../storage/settings';
 
 class PopupController {
   private wpmSlider: HTMLInputElement;
@@ -9,9 +9,12 @@ class PopupController {
   private rampTimeValue: HTMLElement;
   private startingWpmSlider: HTMLInputElement;
   private startingWpmValue: HTMLElement;
+  private autostartDelaySlider: HTMLInputElement;
+  private autostartDelayValue: HTMLElement;
   private modeManualBtn: HTMLButtonElement;
   private modeAutoBtn: HTMLButtonElement;
   private modeHint: HTMLElement;
+  private resetBtn: HTMLButtonElement;
 
   constructor() {
     this.wpmSlider = document.getElementById('default-wpm') as HTMLInputElement;
@@ -22,9 +25,12 @@ class PopupController {
     this.rampTimeValue = document.getElementById('ramp-time-value') as HTMLElement;
     this.startingWpmSlider = document.getElementById('starting-wpm') as HTMLInputElement;
     this.startingWpmValue = document.getElementById('starting-wpm-value') as HTMLElement;
+    this.autostartDelaySlider = document.getElementById('autostart-delay') as HTMLInputElement;
+    this.autostartDelayValue = document.getElementById('autostart-delay-value') as HTMLElement;
     this.modeManualBtn = document.getElementById('mode-manual') as HTMLButtonElement;
     this.modeAutoBtn = document.getElementById('mode-auto') as HTMLButtonElement;
     this.modeHint = document.getElementById('mode-hint') as HTMLElement;
+    this.resetBtn = document.getElementById('reset-defaults') as HTMLButtonElement;
 
     this.init();
   }
@@ -45,6 +51,8 @@ class PopupController {
     this.updateStartingWpmMax(settings.wpm);
     this.startingWpmSlider.value = settings.startingWpm.toString();
     this.startingWpmValue.textContent = settings.startingWpm.toString();
+    this.autostartDelaySlider.value = settings.autostartDelay.toString();
+    this.autostartDelayValue.textContent = settings.autostartDelay.toString();
     this.setActivationMode(settings.activationMode);
   }
 
@@ -115,6 +123,16 @@ class PopupController {
       await saveSetting('startingWpm', startingWpm);
     });
 
+    this.autostartDelaySlider.addEventListener('input', () => {
+      const autostartDelay = parseFloat(this.autostartDelaySlider.value);
+      this.autostartDelayValue.textContent = autostartDelay.toString();
+    });
+
+    this.autostartDelaySlider.addEventListener('change', async () => {
+      const autostartDelay = parseFloat(this.autostartDelaySlider.value);
+      await saveSetting('autostartDelay', autostartDelay);
+    });
+
     this.modeManualBtn.addEventListener('click', async () => {
       this.setActivationMode('manual');
       await saveSetting('activationMode', 'manual');
@@ -123,6 +141,11 @@ class PopupController {
     this.modeAutoBtn.addEventListener('click', async () => {
       this.setActivationMode('auto');
       await saveSetting('activationMode', 'auto');
+    });
+
+    this.resetBtn.addEventListener('click', async () => {
+      await resetAllSettings();
+      this.applySettings(DEFAULT_SETTINGS);
     });
   }
 }

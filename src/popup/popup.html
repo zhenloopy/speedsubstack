@@ -22,8 +22,8 @@
     <div class="setting-group">
       <label for="font-size">Font Size (px)</label>
       <div class="slider-container">
-        <input type="range" id="font-size" min="32" max="128" step="4" value="64">
-        <span id="font-size-value">64</span>
+        <input type="range" id="font-size" min="32" max="128" step="4" value="92">
+        <span id="font-size-value">92</span>
       </div>
     </div>
 
@@ -36,27 +36,6 @@
       <p class="hint" id="mode-hint">Click the button on article pages to start</p>
     </div>
 
-    <div class="advanced-section">
-      <h2>Advanced</h2>
-      
-      <div class="setting-group">
-        <label for="starting-wpm">Starting Speed (WPM)</label>
-        <div class="slider-container">
-          <input type="range" id="starting-wpm" min="100" max="300" step="25" value="100">
-          <span id="starting-wpm-value">100</span>
-        </div>
-      </div>
-
-      <div class="setting-group">
-        <label for="ramp-time">Ramp Time (seconds)</label>
-        <div class="slider-container">
-          <input type="range" id="ramp-time" min="0" max="120" step="5" value="10">
-          <span id="ramp-time-value">10</span>
-        </div>
-        <p class="hint">Speed gradually increases from starting to target</p>
-      </div>
-    </div>
-
     <div class="shortcuts-section">
       <h2>Keyboard Shortcuts</h2>
       <ul>
@@ -67,6 +46,38 @@
         <li><kbd>↓</kbd> -25 WPM</li>
         <li><kbd>Esc</kbd> Close reader</li>
       </ul>
+    </div>
+
+    <div class="advanced-section">
+      <h2>Advanced</h2>
+      
+      <div class="setting-group">
+        <label for="starting-wpm">Starting Speed (WPM)</label>
+        <div class="slider-container">
+          <input type="range" id="starting-wpm" min="100" max="300" step="25" value="150">
+          <span id="starting-wpm-value">150</span>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label for="ramp-time">Ramp Time (seconds)</label>
+        <div class="slider-container">
+          <input type="range" id="ramp-time" min="0" max="120" step="5" value="20">
+          <span id="ramp-time-value">20</span>
+        </div>
+        <p class="hint">Speed gradually increases from starting to target</p>
+      </div>
+
+      <div class="setting-group">
+        <label for="autostart-delay">Autostart Delay (seconds)</label>
+        <div class="slider-container">
+          <input type="range" id="autostart-delay" min="0" max="5" step="0.5" value="1">
+          <span id="autostart-delay-value">1</span>
+        </div>
+        <p class="hint">Delay before reading starts when using Space or switching tabs</p>
+      </div>
+
+      <button id="reset-defaults" class="reset-btn">Reset to Defaults</button>
     </div>
   </div>
   <script src="popup.js" type="module"></script>
