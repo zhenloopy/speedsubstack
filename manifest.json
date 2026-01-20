@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "SpeedSubstack",
+  "version": "1.0.0",
+  "description": "Speed reading for Substack articles - display words one at a time at configurable WPM",
+  "permissions": ["activeTab", "storage"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.substack.com/*",
+        "*://substack.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["styles/overlay.css", "styles/highlighter.css", "styles/start-button.css"]
+    }
+  ]
+}

@@ -1,0 +1,210 @@
+/* Speed Reader Overlay Styles */
+#speedsubstack-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 999999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#speedsubstack-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Word Display */
+#speedsubstack-word-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  max-width: 800px;
+  padding: 0 40px;
+}
+
+#speedsubstack-word {
+  font-size: 64px;
+  font-weight: 500;
+  color: #ffffff;
+  text-align: center;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+/* Optimal Reading Point indicator */
+#speedsubstack-word .orp {
+  color: #ff6b6b;
+}
+
+/* Controls Container */
+#speedsubstack-controls {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  z-index: 1000000;
+}
+
+/* Progress Bar */
+#speedsubstack-progress-container {
+  width: 400px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+#speedsubstack-progress-bar {
+  height: 100%;
+  background: #ff6b6b;
+  border-radius: 3px;
+  transition: width 0.1s ease;
+  width: 0%;
+}
+
+/* Word Count */
+#speedsubstack-word-count {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Play/Pause Button */
+#speedsubstack-play-pause {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #ff6b6b;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+#speedsubstack-play-pause:hover {
+  transform: scale(1.1);
+  background: #ff5252;
+}
+
+#speedsubstack-play-pause svg {
+  width: 24px;
+  height: 24px;
+  fill: white;
+}
+
+/* WPM Slider */
+#speedsubstack-wpm-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+#speedsubstack-wpm-label {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  min-width: 100px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+#speedsubstack-wpm-slider {
+  width: 200px;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  outline: none;
+}
+
+#speedsubstack-wpm-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ff6b6b;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+#speedsubstack-wpm-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+#speedsubstack-wpm-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ff6b6b;
+  cursor: pointer;
+  border: none;
+}
+
+/* Close Button */
+#speedsubstack-close {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+  z-index: 1000001;
+}
+
+#speedsubstack-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+#speedsubstack-close svg {
+  width: 20px;
+  height: 20px;
+  stroke: white;
+  stroke-width: 2;
+}
+
+/* Keyboard Shortcuts Hint */
+#speedsubstack-shortcuts {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: right;
+  line-height: 1.6;
+}
+
+#speedsubstack-shortcuts kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  font-family: inherit;
+  margin-right: 4px;
+}

@@ -1,0 +1,22 @@
+{
+  "name": "speedsubstack",
+  "version": "1.0.0",
+  "description": "Speed reading extension for Substack articles",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build && vite build --config vite.popup.config.ts && node scripts/build.js",
+    "build:content": "vite build",
+    "build:popup": "vite build --config vite.popup.config.ts",
+    "build:static": "node scripts/build.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "jsdom": "^24.0.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "vitest": "^1.6.0"
+  }
+}

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpeedSubstack Settings</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <h1>SpeedSubstack</h1>
+    <p class="tagline">Speed reading for Substack</p>
+
+    <div class="setting-group">
+      <label for="default-wpm">Default Speed (WPM)</label>
+      <div class="slider-container">
+        <input type="range" id="default-wpm" min="100" max="800" step="25" value="300">
+        <span id="wpm-value">300</span>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <label for="activation-mode">Activation Mode</label>
+      <div class="toggle-container">
+        <button id="mode-manual" class="mode-btn active">Manual</button>
+        <button id="mode-auto" class="mode-btn">Auto</button>
+      </div>
+      <p class="hint" id="mode-hint">Click the button on article pages to start</p>
+    </div>
+
+    <div class="shortcuts-section">
+      <h2>Keyboard Shortcuts</h2>
+      <ul>
+        <li><kbd>Space</kbd> Play/Pause</li>
+        <li><kbd>←</kbd> Rewind 10s</li>
+        <li><kbd>→</kbd> Forward 10s</li>
+        <li><kbd>↑</kbd> +25 WPM</li>
+        <li><kbd>↓</kbd> -25 WPM</li>
+        <li><kbd>Esc</kbd> Close reader</li>
+      </ul>
+    </div>
+  </div>
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
