@@ -17,6 +17,36 @@ export function calculateBackwardIndex(
   return Math.max(currentIndex - skipWords, 0);
 }
 
+export function findNextParagraphIndex(
+  currentIndex: number,
+  paragraphStartIndices: number[]
+): number {
+  // Find the next paragraph start after the current index
+  for (const startIndex of paragraphStartIndices) {
+    if (startIndex > currentIndex) {
+      return startIndex;
+    }
+  }
+  // If no next paragraph, stay at current position
+  return currentIndex;
+}
+
+export function findPreviousParagraphIndex(
+  currentIndex: number,
+  paragraphStartIndices: number[]
+): number {
+  // Find the previous paragraph start before the current index
+  let previousStart = 0;
+  for (const startIndex of paragraphStartIndices) {
+    if (startIndex < currentIndex) {
+      previousStart = startIndex;
+    } else {
+      break;
+    }
+  }
+  return previousStart;
+}
+
 export function calculateRemainingTime(remainingWords: number, wpm: number): number {
   return (remainingWords / wpm) * 60;
 }

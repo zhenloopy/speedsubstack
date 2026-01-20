@@ -52,6 +52,10 @@ export class Overlay {
     this.overlay?.classList.remove('visible');
   }
 
+  isVisible(): boolean {
+    return this.overlay?.classList.contains('visible') ?? false;
+  }
+
   displayWord(word: string): void {
     if (!this.wordElement) return;
     this.wordElement.textContent = word;

@@ -5,6 +5,8 @@ import {
   calculateBackwardIndex,
   calculateRemainingTime,
   formatTime,
+  findNextParagraphIndex,
+  findPreviousParagraphIndex,
 } from '../engine/navigation';
 
 describe('navigation', () => {
@@ -101,6 +103,50 @@ describe('navigation', () => {
 
     it('should handle large values', () => {
       expect(formatTime(3661)).toBe('61:01');
+    });
+  });
+
+  describe('findNextParagraphIndex', () => {
+    const paragraphStarts = [0, 25, 60, 100, 150];
+
+    it('should find next paragraph from middle of current paragraph', () => {
+      expect(findNextParagraphIndex(10, paragraphStarts)).toBe(25);
+    });
+
+    it('should find next paragraph from paragraph start', () => {
+      expect(findNextParagraphIndex(25, paragraphStarts)).toBe(60);
+    });
+
+    it('should stay at current position when at last paragraph', () => {
+      expect(findNextParagraphIndex(160, paragraphStarts)).toBe(160);
+    });
+
+    it('should find next paragraph when at second to last paragraph', () => {
+      expect(findNextParagraphIndex(125, paragraphStarts)).toBe(150);
+    });
+  });
+
+  describe('findPreviousParagraphIndex', () => {
+    const paragraphStarts = [0, 25, 60, 100, 150];
+
+    it('should find previous paragraph from middle of current paragraph', () => {
+      expect(findPreviousParagraphIndex(50, paragraphStarts)).toBe(25);
+    });
+
+    it('should find previous paragraph from paragraph start', () => {
+      expect(findPreviousParagraphIndex(60, paragraphStarts)).toBe(25);
+    });
+
+    it('should return 0 when in first paragraph', () => {
+      expect(findPreviousParagraphIndex(10, paragraphStarts)).toBe(0);
+    });
+
+    it('should return 0 when at first paragraph start', () => {
+      expect(findPreviousParagraphIndex(0, paragraphStarts)).toBe(0);
+    });
+
+    it('should find correct previous paragraph from last paragraph', () => {
+      expect(findPreviousParagraphIndex(160, paragraphStarts)).toBe(150);
     });
   });
 });

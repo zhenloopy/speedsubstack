@@ -5,6 +5,8 @@ class PopupController {
   private wpmValue: HTMLElement;
   private fontSizeSlider: HTMLInputElement;
   private fontSizeValue: HTMLElement;
+  private rampTimeSlider: HTMLInputElement;
+  private rampTimeValue: HTMLElement;
   private modeManualBtn: HTMLButtonElement;
   private modeAutoBtn: HTMLButtonElement;
   private modeHint: HTMLElement;
@@ -14,6 +16,8 @@ class PopupController {
     this.wpmValue = document.getElementById('wpm-value') as HTMLElement;
     this.fontSizeSlider = document.getElementById('font-size') as HTMLInputElement;
     this.fontSizeValue = document.getElementById('font-size-value') as HTMLElement;
+    this.rampTimeSlider = document.getElementById('ramp-time') as HTMLInputElement;
+    this.rampTimeValue = document.getElementById('ramp-time-value') as HTMLElement;
     this.modeManualBtn = document.getElementById('mode-manual') as HTMLButtonElement;
     this.modeAutoBtn = document.getElementById('mode-auto') as HTMLButtonElement;
     this.modeHint = document.getElementById('mode-hint') as HTMLElement;
@@ -32,6 +36,8 @@ class PopupController {
     this.wpmValue.textContent = settings.wpm.toString();
     this.fontSizeSlider.value = settings.fontSize.toString();
     this.fontSizeValue.textContent = settings.fontSize.toString();
+    this.rampTimeSlider.value = settings.rampTime.toString();
+    this.rampTimeValue.textContent = settings.rampTime.toString();
     this.setActivationMode(settings.activationMode);
   }
 
@@ -66,6 +72,16 @@ class PopupController {
     this.fontSizeSlider.addEventListener('change', async () => {
       const fontSize = parseInt(this.fontSizeSlider.value, 10);
       await saveSetting('fontSize', fontSize);
+    });
+
+    this.rampTimeSlider.addEventListener('input', () => {
+      const rampTime = parseInt(this.rampTimeSlider.value, 10);
+      this.rampTimeValue.textContent = rampTime.toString();
+    });
+
+    this.rampTimeSlider.addEventListener('change', async () => {
+      const rampTime = parseInt(this.rampTimeSlider.value, 10);
+      await saveSetting('rampTime', rampTime);
     });
 
     this.modeManualBtn.addEventListener('click', async () => {

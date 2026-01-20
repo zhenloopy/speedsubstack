@@ -5,6 +5,8 @@ export interface KeyboardCallbacks {
   onIncreaseWpm: () => void;
   onDecreaseWpm: () => void;
   onClose: () => void;
+  onShowAndPlay?: () => void;
+  isOverlayVisible: () => boolean;
 }
 
 export class KeyboardHandler {
@@ -32,10 +34,16 @@ export class KeyboardHandler {
   private handleKeydown(e: KeyboardEvent): void {
     if (this.isInputFocused()) return;
 
+    const overlayVisible = this.callbacks.isOverlayVisible();
+
     switch (e.code) {
       case 'Space':
         e.preventDefault();
-        this.callbacks.onPlayPause();
+        if (overlayVisible) {
+          this.callbacks.onPlayPause();
+        } else if (this.callbacks.onShowAndPlay) {
+          this.callbacks.onShowAndPlay();
+        }
         break;
 
       case 'ArrowRight':
@@ -60,7 +68,9 @@ export class KeyboardHandler {
 
       case 'Escape':
         e.preventDefault();
-        this.callbacks.onClose();
+        if (overlayVisible) {
+          this.callbacks.onClose();
+        }
         break;
     }
   }

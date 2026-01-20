@@ -28,6 +28,15 @@
     </div>
 
     <div class="setting-group">
+      <label for="ramp-time">Ramp Time (seconds)</label>
+      <div class="slider-container">
+        <input type="range" id="ramp-time" min="0" max="120" step="5" value="10">
+        <span id="ramp-time-value">10</span>
+      </div>
+      <p class="hint">Speed gradually increases from 100 WPM to target</p>
+    </div>
+
+    <div class="setting-group">
       <label for="activation-mode">Activation Mode</label>
       <div class="toggle-container">
         <button id="mode-manual" class="mode-btn active">Manual</button>

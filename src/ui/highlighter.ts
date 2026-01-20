@@ -4,6 +4,9 @@ export class Highlighter {
   private highlightElement: HTMLElement | null = null;
   private currentWord: ExtractedWord | null = null;
   private styleElement: HTMLStyleElement | null = null;
+  private scrollContainer: HTMLElement | null = null;
+  private boundScrollHandler: (() => void) | null = null;
+  private rafId: number | null = null;
 
   constructor() {
     this.injectStyles();
@@ -15,7 +18,7 @@ export class Highlighter {
     this.styleElement = document.createElement('style');
     this.styleElement.textContent = `
       .speedsubstack-highlight-marker {
-        background-color: #ffeb3b;
+        background-color: rgba(255, 235, 59, 0.4);
         border-radius: 2px;
         padding: 0 2px;
         margin: 0 -2px;
@@ -43,41 +46,30 @@ export class Highlighter {
         return;
       }
 
-      const range = document.createRange();
-      range.setStart(word.textNode, word.startOffset);
-      range.setEnd(word.textNode, word.endOffset);
-
-      const rect = range.getBoundingClientRect();
-      if (rect.width === 0 && rect.height === 0) {
-        return;
-      }
-
-      // Create highlight overlay positioned absolutely
+      this.currentWord = word;
+      
+      // Create highlight element
       this.highlightElement = document.createElement('div');
       this.highlightElement.className = 'speedsubstack-highlight-marker';
-      this.highlightElement.style.left = `${rect.left + window.scrollX}px`;
-      this.highlightElement.style.top = `${rect.top + window.scrollY}px`;
-      this.highlightElement.style.width = `${rect.width}px`;
-      this.highlightElement.style.height = `${rect.height}px`;
-      
       document.body.appendChild(this.highlightElement);
-      this.currentWord = word;
+      
+      // Position it
+      this.updateHighlightPosition();
+      
+      // Setup scroll listener to keep highlight in sync
+      const parent = word.textNode.parentElement;
+      if (parent) {
+        this.scrollContainer = this.findScrollableParent(parent);
+        this.setupScrollListener();
+      }
     } catch (e) {
       // Range operations can fail if DOM changed
       console.warn('[SpeedSubstack] Highlight failed:', e);
     }
   }
 
-  private clearHighlight(): void {
-    if (this.highlightElement) {
-      this.highlightElement.remove();
-      this.highlightElement = null;
-    }
-    this.currentWord = null;
-  }
-
-  scrollToHighlight(): void {
-    if (!this.currentWord) return;
+  private updateHighlightPosition(): void {
+    if (!this.currentWord || !this.highlightElement) return;
 
     try {
       const range = document.createRange();
@@ -85,27 +77,161 @@ export class Highlighter {
       range.setEnd(this.currentWord.textNode, this.currentWord.endOffset);
 
       const rect = range.getBoundingClientRect();
-      const scrollY = window.scrollY + rect.top - window.innerHeight / 2;
-      
-      window.scrollTo({
-        top: scrollY,
-        behavior: 'smooth',
+      if (rect.width === 0 && rect.height === 0) return;
+
+      // Check if highlight is within visible content area (excluding nav bars)
+      const visibleBounds = this.getVisibleContentBounds();
+      if (visibleBounds) {
+        const isVisible = rect.top >= visibleBounds.top && rect.bottom <= visibleBounds.bottom;
+        this.highlightElement.style.visibility = isVisible ? 'visible' : 'hidden';
+      }
+
+      this.highlightElement.style.left = `${rect.left + window.scrollX}px`;
+      this.highlightElement.style.top = `${rect.top + window.scrollY}px`;
+      this.highlightElement.style.width = `${rect.width}px`;
+      this.highlightElement.style.height = `${rect.height}px`;
+    } catch (e) {
+      // Ignore positioning errors
+    }
+  }
+
+  private getVisibleContentBounds(): { top: number; bottom: number } | null {
+    // Check for Substack reader nav bars
+    const topNav = document.querySelector<HTMLElement>('[class*="nav-"][class*="pc-display-flex"][class*="pc-justifyContent-space-between"]');
+    const bottomNav = document.querySelector<HTMLElement>('[class*="bottomNav-"]');
+
+    let top = 0;
+    let bottom = window.innerHeight;
+
+    if (topNav) {
+      const topNavRect = topNav.getBoundingClientRect();
+      top = topNavRect.bottom;
+    }
+
+    if (bottomNav) {
+      const bottomNavRect = bottomNav.getBoundingClientRect();
+      bottom = bottomNavRect.top;
+    }
+
+    // Also respect scrollable container bounds
+    if (this.scrollContainer && this.scrollContainer !== document.documentElement) {
+      const containerRect = this.scrollContainer.getBoundingClientRect();
+      top = Math.max(top, containerRect.top);
+      bottom = Math.min(bottom, containerRect.bottom);
+    }
+
+    return { top, bottom };
+  }
+
+  private setupScrollListener(): void {
+    this.removeScrollListener();
+    
+    this.boundScrollHandler = () => {
+      if (this.rafId !== null) return;
+      this.rafId = requestAnimationFrame(() => {
+        this.rafId = null;
+        this.updateHighlightPosition();
       });
+    };
+
+    // Listen on both window and scroll container
+    window.addEventListener('scroll', this.boundScrollHandler, { passive: true });
+    if (this.scrollContainer && this.scrollContainer !== document.documentElement) {
+      this.scrollContainer.addEventListener('scroll', this.boundScrollHandler, { passive: true });
+    }
+  }
+
+  private removeScrollListener(): void {
+    if (this.boundScrollHandler) {
+      window.removeEventListener('scroll', this.boundScrollHandler);
+      if (this.scrollContainer && this.scrollContainer !== document.documentElement) {
+        this.scrollContainer.removeEventListener('scroll', this.boundScrollHandler);
+      }
+      this.boundScrollHandler = null;
+    }
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+  }
+
+  private clearHighlight(): void {
+    this.removeScrollListener();
+    if (this.highlightElement) {
+      this.highlightElement.remove();
+      this.highlightElement = null;
+    }
+    this.currentWord = null;
+    this.scrollContainer = null;
+  }
+
+  scrollToHighlight(): void {
+    if (!this.currentWord) return;
+
+    try {
+      const parent = this.currentWord.textNode.parentElement;
+      if (!parent) return;
+
+      // Find the scrollable container (for Substack reader view modals)
+      const scrollContainer = this.findScrollableParent(parent);
+      
+      const range = document.createRange();
+      range.setStart(this.currentWord.textNode, this.currentWord.startOffset);
+      range.setEnd(this.currentWord.textNode, this.currentWord.endOffset);
+      const rect = range.getBoundingClientRect();
+
+      if (scrollContainer && scrollContainer !== document.documentElement) {
+        // Scroll within the container
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const targetScrollTop = scrollContainer.scrollTop + rect.top - containerRect.top - containerRect.height / 2;
+        scrollContainer.scrollTo({
+          top: targetScrollTop,
+          behavior: 'instant',
+        });
+      } else {
+        // Fallback to window scroll
+        const scrollY = window.scrollY + rect.top - window.innerHeight / 2;
+        window.scrollTo({
+          top: scrollY,
+          behavior: 'instant',
+        });
+      }
     } catch (e) {
       // Fallback: scroll to text node's parent
       const parent = this.currentWord.textNode.parentElement;
       if (parent) {
         parent.scrollIntoView({
-          behavior: 'smooth',
+          behavior: 'instant',
           block: 'center',
         });
       }
     }
   }
 
+  private findScrollableParent(element: HTMLElement): HTMLElement | null {
+    let current: HTMLElement | null = element;
+    
+    while (current && current !== document.body) {
+      const style = window.getComputedStyle(current);
+      const overflowY = style.overflowY;
+      
+      // Check if this element is scrollable
+      if ((overflowY === 'auto' || overflowY === 'scroll') && current.scrollHeight > current.clientHeight) {
+        return current;
+      }
+      current = current.parentElement;
+    }
+    
+    return document.documentElement;
+  }
+
   destroy(): void {
     this.clearHighlight();
     this.styleElement?.remove();
     this.styleElement = null;
+  }
+
+  getCurrentWord(): ExtractedWord | null {
+    return this.currentWord;
   }
 }

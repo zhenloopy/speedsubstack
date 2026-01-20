@@ -7,18 +7,22 @@ export interface TimingCallbacks {
   onProgress: (current: number, total: number) => void;
 }
 
+const RAMP_START_WPM = 100;
+
 export class TimingController {
   private words: ExtractedWord[] = [];
   private currentIndex = 0;
-  private wpm: number;
+  private targetWpm: number;
   private isPlaying = false;
   private timerId: number | null = null;
   private callbacks: TimingCallbacks;
   private lastTickTime = 0;
   private accumulatedTime = 0;
+  private rampTimeMs = 10000; // default 10 seconds
+  private playStartTime = 0;
 
   constructor(wpm: number, callbacks: TimingCallbacks) {
-    this.wpm = wpm;
+    this.targetWpm = wpm;
     this.callbacks = callbacks;
   }
 
@@ -28,8 +32,20 @@ export class TimingController {
     this.callbacks.onProgress(0, words.length);
   }
 
+  private getCurrentWpm(): number {
+    if (this.rampTimeMs <= 0) return this.targetWpm;
+    
+    const elapsed = performance.now() - this.playStartTime;
+    if (elapsed >= this.rampTimeMs) return this.targetWpm;
+    
+    // Smooth ease-out interpolation
+    const progress = elapsed / this.rampTimeMs;
+    const eased = 1 - Math.pow(1 - progress, 2);
+    return RAMP_START_WPM + (this.targetWpm - RAMP_START_WPM) * eased;
+  }
+
   private getBaseInterval(): number {
-    return 60000 / this.wpm;
+    return 60000 / this.getCurrentWpm();
   }
 
   private getCurrentInterval(): number {
@@ -46,6 +62,7 @@ export class TimingController {
     this.isPlaying = true;
     this.lastTickTime = performance.now();
     this.accumulatedTime = 0;
+    this.playStartTime = performance.now();
 
     this.showCurrentWord();
     this.tick();
@@ -112,11 +129,19 @@ export class TimingController {
   }
 
   setWpm(wpm: number): void {
-    this.wpm = Math.max(100, Math.min(800, wpm));
+    this.targetWpm = Math.max(100, Math.min(800, wpm));
   }
 
   getWpm(): number {
-    return this.wpm;
+    return this.targetWpm;
+  }
+
+  setRampTime(seconds: number): void {
+    this.rampTimeMs = Math.max(0, Math.min(120, seconds)) * 1000;
+  }
+
+  getRampTime(): number {
+    return this.rampTimeMs / 1000;
   }
 
   skipForward(words: number): void {

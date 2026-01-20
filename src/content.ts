@@ -13,12 +13,12 @@ import { ScrollController } from './ui/scroll-controller';
 import { TimingController } from './engine/timing-controller';
 import { StateMachine, type ReaderState } from './engine/state-machine';
 import { KeyboardHandler } from './engine/keyboard-handler';
-import { calculateSkipWords } from './engine/navigation';
+import { findNextParagraphIndex, findPreviousParagraphIndex } from './engine/navigation';
 
 class SpeedSubstackApp {
   private extractionResult: ExtractionResult | null = null;
   private articleContainer: HTMLElement | null = null;
-  private settings: Settings = { wpm: 300, activationMode: 'manual', fontSize: 64 };
+  private settings: Settings = { wpm: 300, activationMode: 'manual', fontSize: 64, rampTime: 10 };
 
   private overlay: Overlay;
   private controls: Controls;
@@ -32,6 +32,7 @@ class SpeedSubstackApp {
 
   private unsubscribeSettings: (() => void) | null = null;
   private autoPlayTimer: number | null = null;
+  private showAndPlayTimer: number | null = null;
   
   // Store bound handlers for cleanup
   private boundCloseHandler: (() => void) | null = null;
@@ -63,6 +64,7 @@ class SpeedSubstackApp {
 
     this.startButton = new StartButton({
       onStart: this.startReading.bind(this),
+      onGoToCurrentWord: this.goToCurrentWord.bind(this),
     });
 
     this.highlighter = new Highlighter();
@@ -79,6 +81,8 @@ class SpeedSubstackApp {
       onIncreaseWpm: () => this.wpmSlider.increaseWpm(),
       onDecreaseWpm: () => this.wpmSlider.decreaseWpm(),
       onClose: this.closeReader.bind(this),
+      onShowAndPlay: this.showAndPlay.bind(this),
+      isOverlayVisible: () => this.overlay.isVisible(),
     });
 
     this.stateMachine.onStateChange(this.handleStateChange.bind(this));
@@ -116,6 +120,7 @@ class SpeedSubstackApp {
   async init(): Promise<void> {
     this.settings = await loadSettings();
     this.timingController.setWpm(this.settings.wpm);
+    this.timingController.setRampTime(this.settings.rampTime);
     this.overlay.setFontSize(this.settings.fontSize);
 
     this.unsubscribeSettings = onSettingsChange((changes) => {
@@ -130,6 +135,10 @@ class SpeedSubstackApp {
       if (changes.fontSize !== undefined) {
         this.settings.fontSize = changes.fontSize;
         this.overlay.setFontSize(changes.fontSize);
+      }
+      if (changes.rampTime !== undefined) {
+        this.settings.rampTime = changes.rampTime;
+        this.timingController.setRampTime(changes.rampTime);
       }
     });
 
@@ -170,14 +179,20 @@ class SpeedSubstackApp {
     cleanupOldProgress();
 
     const progress = await loadProgress(window.location.href);
-    if (progress && progress.paragraphStartIndex > 0) {
-      this.timingController.setIndex(progress.paragraphStartIndex);
-    }
+    const hasProgress = progress && progress.paragraphStartIndex > 0;
+    
+    // Always show initial word/highlight (even at index 0)
+    const startIndex = hasProgress ? progress.paragraphStartIndex : 0;
+    this.timingController.setIndex(startIndex);
+
+    // Enable keyboard handler globally after article detection
+    this.keyboardHandler.enable();
 
     if (this.settings.activationMode === 'auto') {
       this.startReading();
     } else {
       this.startButton.create();
+      this.startButton.setHasProgress(hasProgress);
       this.startButton.show();
     }
   }
@@ -185,7 +200,6 @@ class SpeedSubstackApp {
   private startReading(): void {
     this.startButton.hide();
     this.overlay.show();
-    this.keyboardHandler.enable();
     this.scrollController.enable();
     this.stateMachine.transition('paused');
     this.controls.setPlaying(false);
@@ -200,21 +214,55 @@ class SpeedSubstackApp {
     }, 3000);
   }
 
+  private showAndPlay(): void {
+    // If reader hasn't been started yet, start it
+    if (this.stateMachine.getState() === 'idle') {
+      this.startButton.hide();
+      this.overlay.show();
+      this.scrollController.enable();
+      this.stateMachine.transition('paused');
+      this.controls.setPlaying(false);
+    } else {
+      // Otherwise just show the overlay
+      this.overlay.show();
+      this.stateMachine.hideArticle();
+    }
+    
+    // Wait 0.5 seconds then start playing
+    this.showAndPlayTimer = window.setTimeout(() => {
+      this.showAndPlayTimer = null;
+      if (!this.timingController.getIsPlaying()) {
+        this.timingController.play();
+        this.stateMachine.startReading();
+        this.controls.setPlaying(true);
+      }
+    }, 500);
+  }
+
   private closeReader(): void {
     if (this.autoPlayTimer !== null) {
       clearTimeout(this.autoPlayTimer);
       this.autoPlayTimer = null;
     }
+    if (this.showAndPlayTimer !== null) {
+      clearTimeout(this.showAndPlayTimer);
+      this.showAndPlayTimer = null;
+    }
     this.saveCurrentProgress();
     this.timingController.pause();
     this.stateMachine.stop();
     this.overlay.hide();
-    this.keyboardHandler.disable();
     this.scrollController.disable();
 
     if (this.settings.activationMode === 'manual') {
       this.startButton.show();
+      // Show current word button since user has progress
+      this.startButton.setHasProgress(true);
     }
+  }
+
+  private goToCurrentWord(): void {
+    this.highlighter.scrollToHighlight();
   }
 
   private togglePlayPause(): void {
@@ -224,10 +272,14 @@ class SpeedSubstackApp {
       this.timingController.pause();
       this.stateMachine.pauseReading();
     } else {
-      // Cancel auto-play timer if user manually starts playing
+      // Cancel auto-play timers if user manually starts playing
       if (this.autoPlayTimer !== null) {
         clearTimeout(this.autoPlayTimer);
         this.autoPlayTimer = null;
+      }
+      if (this.showAndPlayTimer !== null) {
+        clearTimeout(this.showAndPlayTimer);
+        this.showAndPlayTimer = null;
       }
       this.timingController.play();
       this.stateMachine.startReading();
@@ -239,6 +291,10 @@ class SpeedSubstackApp {
   private handleWordChange(word: ExtractedWord, _index: number): void {
     this.overlay.displayWord(word.word);
     this.highlighter.highlight(word);
+    // Auto-scroll article to current word while overlay is visible
+    if (this.overlay.isVisible()) {
+      this.highlighter.scrollToHighlight();
+    }
   }
 
   private handleComplete(): void {
@@ -259,13 +315,27 @@ class SpeedSubstackApp {
   }
 
   private handleRewind(): void {
-    const skipWords = calculateSkipWords(this.timingController.getWpm(), 10);
-    this.timingController.skipBackward(skipWords);
+    if (!this.extractionResult) return;
+    const currentIndex = this.timingController.getIndex();
+    const previousIndex = findPreviousParagraphIndex(
+      currentIndex,
+      this.extractionResult.paragraphStartIndices
+    );
+    this.timingController.setIndex(previousIndex);
+    // Scroll to the new position
+    this.highlighter.scrollToHighlight();
   }
 
   private handleForward(): void {
-    const skipWords = calculateSkipWords(this.timingController.getWpm(), 10);
-    this.timingController.skipForward(skipWords);
+    if (!this.extractionResult) return;
+    const currentIndex = this.timingController.getIndex();
+    const nextIndex = findNextParagraphIndex(
+      currentIndex,
+      this.extractionResult.paragraphStartIndices
+    );
+    this.timingController.setIndex(nextIndex);
+    // Scroll to the new position
+    this.highlighter.scrollToHighlight();
   }
 
   private handleScrollToArticle(): void {
@@ -313,6 +383,10 @@ class SpeedSubstackApp {
     if (this.autoPlayTimer !== null) {
       clearTimeout(this.autoPlayTimer);
       this.autoPlayTimer = null;
+    }
+    if (this.showAndPlayTimer !== null) {
+      clearTimeout(this.showAndPlayTimer);
+      this.showAndPlayTimer = null;
     }
 
     this.saveCurrentProgress();

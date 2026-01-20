@@ -1,6 +1,7 @@
 fixes:
 features:
 	- pause at the end of paragraphs / sentences
+	- start slow scale up speed to target speed logarithmically
 	- centered around red lettering
 	- controllable font size
 	- underlying page scrolls with reading
