@@ -1,0 +1,9 @@
+fixes:
+	- no overlapping forward/rewind buttons with instructions
+	- when opening extension, start paused instead of playing
+	- remove shitty code
+features:
+	- pause at the end of paragraphs / sentences
+	- centered around red lettering
+	- controllable font size
+	- underlying page scrolls with reading
