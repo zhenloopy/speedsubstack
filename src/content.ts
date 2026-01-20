@@ -18,7 +18,7 @@ import { findNextParagraphIndex, findPreviousParagraphIndex } from './engine/nav
 class SpeedSubstackApp {
   private extractionResult: ExtractionResult | null = null;
   private articleContainer: HTMLElement | null = null;
-  private settings: Settings = { wpm: 300, activationMode: 'manual', fontSize: 64, rampTime: 10, startingWpm: 150, autostartDelay: 1 };
+  private settings: Settings = { wpm: 300, activationMode: 'manual', fontSize: 64, rampTime: 10, startingWpm: 150, autostartDelay: 1, paragraphPauseEnabled: false, paragraphPauseDuration: 0.5, paragraphRampUp: false, titleDisplay: true, headingDisplay: false };
 
   private overlay: Overlay;
   private controls: Controls;
@@ -139,6 +139,9 @@ class SpeedSubstackApp {
     this.settings = await loadSettings();
     this.timingController.setWpm(this.settings.wpm);
     this.timingController.setRampTime(this.settings.rampTime);
+    this.timingController.setParagraphPause(this.settings.paragraphPauseEnabled, this.settings.paragraphPauseDuration);
+    this.timingController.setParagraphRampUp(this.settings.paragraphRampUp);
+    this.wpmSlider.setWpm(this.settings.wpm);
     this.overlay.setFontSize(this.settings.fontSize);
 
     this.unsubscribeSettings = onSettingsChange((changes) => {
@@ -161,6 +164,26 @@ class SpeedSubstackApp {
       if (changes.autostartDelay !== undefined) {
         this.settings.autostartDelay = changes.autostartDelay;
       }
+      if (changes.paragraphPauseEnabled !== undefined) {
+        this.settings.paragraphPauseEnabled = changes.paragraphPauseEnabled;
+        this.timingController.setParagraphPause(this.settings.paragraphPauseEnabled, this.settings.paragraphPauseDuration);
+      }
+      if (changes.paragraphPauseDuration !== undefined) {
+        this.settings.paragraphPauseDuration = changes.paragraphPauseDuration;
+        this.timingController.setParagraphPause(this.settings.paragraphPauseEnabled, this.settings.paragraphPauseDuration);
+      }
+      if (changes.paragraphRampUp !== undefined) {
+        this.settings.paragraphRampUp = changes.paragraphRampUp;
+        this.timingController.setParagraphRampUp(changes.paragraphRampUp);
+      }
+      if (changes.titleDisplay !== undefined) {
+        this.settings.titleDisplay = changes.titleDisplay;
+        this.overlay.setTitleDisplay(changes.titleDisplay);
+      }
+      if (changes.headingDisplay !== undefined) {
+        this.settings.headingDisplay = changes.headingDisplay;
+        this.overlay.setHeadingDisplay(changes.headingDisplay);
+      }
     });
 
     const detection = await waitForArticle();
@@ -180,10 +203,15 @@ class SpeedSubstackApp {
       return;
     }
 
-    this.timingController.setWords(this.extractionResult.words);
+    this.timingController.setWords(this.extractionResult.words, this.extractionResult.paragraphStartIndices);
     this.scrollController.setArticleContainer(this.articleContainer);
 
     this.overlay.create();
+    this.overlay.setTitleDisplay(this.settings.titleDisplay);
+    this.overlay.setHeadingDisplay(this.settings.headingDisplay);
+    if (this.extractionResult.articleTitle) {
+      this.overlay.setTitle(this.extractionResult.articleTitle);
+    }
     const overlayElement = this.overlay.getElement();
     if (overlayElement) {
       this.controls.create(overlayElement);
@@ -200,7 +228,7 @@ class SpeedSubstackApp {
     cleanupOldProgress();
 
     const progress = await loadProgress(window.location.href);
-    const hasProgress = progress && progress.paragraphStartIndex > 0;
+    const hasProgress = !!(progress && progress.paragraphStartIndex > 0);
     
     // Always show initial word/highlight (even at index 0)
     const startIndex = hasProgress ? progress.paragraphStartIndex : 0;
@@ -331,6 +359,7 @@ class SpeedSubstackApp {
 
   private handleWordChange(word: ExtractedWord, _index: number): void {
     this.overlay.displayWord(word.word);
+    this.overlay.setHeading(word.currentHeading);
     this.highlighter.highlight(word);
     // Auto-scroll article to current word while overlay is visible
     if (this.overlay.isVisible()) {

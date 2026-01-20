@@ -77,6 +77,45 @@
         <p class="hint">Delay before reading starts when using Space or switching tabs</p>
       </div>
 
+      <div class="setting-group">
+        <label>
+          <input type="checkbox" id="paragraph-pause-enabled">
+          Pause at End of Paragraphs
+        </label>
+      </div>
+
+      <div class="setting-group" id="paragraph-pause-duration-group">
+        <label for="paragraph-pause-duration">Paragraph Pause (seconds)</label>
+        <div class="slider-container">
+          <input type="range" id="paragraph-pause-duration" min="0" max="2" step="0.25" value="0.5">
+          <span id="paragraph-pause-duration-value">0.5</span>
+        </div>
+      </div>
+
+      <div class="setting-group" id="paragraph-ramp-up-group">
+        <label>
+          <input type="checkbox" id="paragraph-ramp-up">
+          Paragraph Ramp Up
+        </label>
+        <p class="hint">Restart speed ramp after each paragraph</p>
+      </div>
+
+      <div class="setting-group">
+        <label>
+          <input type="checkbox" id="title-display" checked>
+          Title Display
+        </label>
+        <p class="hint">Show article title at top of overlay</p>
+      </div>
+
+      <div class="setting-group">
+        <label>
+          <input type="checkbox" id="heading-display">
+          Heading Display
+        </label>
+        <p class="hint">Show current section heading below title</p>
+      </div>
+
       <button id="reset-defaults" class="reset-btn">Reset to Defaults</button>
     </div>
   </div>

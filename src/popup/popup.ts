@@ -11,6 +11,14 @@ class PopupController {
   private startingWpmValue: HTMLElement;
   private autostartDelaySlider: HTMLInputElement;
   private autostartDelayValue: HTMLElement;
+  private paragraphPauseEnabledCheckbox: HTMLInputElement;
+  private paragraphPauseDurationSlider: HTMLInputElement;
+  private paragraphPauseDurationValue: HTMLElement;
+  private paragraphPauseDurationGroup: HTMLElement;
+  private paragraphRampUpCheckbox: HTMLInputElement;
+  private paragraphRampUpGroup: HTMLElement;
+  private titleDisplayCheckbox: HTMLInputElement;
+  private headingDisplayCheckbox: HTMLInputElement;
   private modeManualBtn: HTMLButtonElement;
   private modeAutoBtn: HTMLButtonElement;
   private modeHint: HTMLElement;
@@ -27,6 +35,14 @@ class PopupController {
     this.startingWpmValue = document.getElementById('starting-wpm-value') as HTMLElement;
     this.autostartDelaySlider = document.getElementById('autostart-delay') as HTMLInputElement;
     this.autostartDelayValue = document.getElementById('autostart-delay-value') as HTMLElement;
+    this.paragraphPauseEnabledCheckbox = document.getElementById('paragraph-pause-enabled') as HTMLInputElement;
+    this.paragraphPauseDurationSlider = document.getElementById('paragraph-pause-duration') as HTMLInputElement;
+    this.paragraphPauseDurationValue = document.getElementById('paragraph-pause-duration-value') as HTMLElement;
+    this.paragraphPauseDurationGroup = document.getElementById('paragraph-pause-duration-group') as HTMLElement;
+    this.paragraphRampUpCheckbox = document.getElementById('paragraph-ramp-up') as HTMLInputElement;
+    this.paragraphRampUpGroup = document.getElementById('paragraph-ramp-up-group') as HTMLElement;
+    this.titleDisplayCheckbox = document.getElementById('title-display') as HTMLInputElement;
+    this.headingDisplayCheckbox = document.getElementById('heading-display') as HTMLInputElement;
     this.modeManualBtn = document.getElementById('mode-manual') as HTMLButtonElement;
     this.modeAutoBtn = document.getElementById('mode-auto') as HTMLButtonElement;
     this.modeHint = document.getElementById('mode-hint') as HTMLElement;
@@ -53,7 +69,19 @@ class PopupController {
     this.startingWpmValue.textContent = settings.startingWpm.toString();
     this.autostartDelaySlider.value = settings.autostartDelay.toString();
     this.autostartDelayValue.textContent = settings.autostartDelay.toString();
+    this.paragraphPauseEnabledCheckbox.checked = settings.paragraphPauseEnabled;
+    this.paragraphPauseDurationSlider.value = settings.paragraphPauseDuration.toString();
+    this.paragraphPauseDurationValue.textContent = settings.paragraphPauseDuration.toString();
+    this.paragraphRampUpCheckbox.checked = settings.paragraphRampUp;
+    this.titleDisplayCheckbox.checked = settings.titleDisplay;
+    this.headingDisplayCheckbox.checked = settings.headingDisplay;
+    this.updateParagraphPauseOptionsVisibility(settings.paragraphPauseEnabled);
     this.setActivationMode(settings.activationMode);
+  }
+
+  private updateParagraphPauseOptionsVisibility(enabled: boolean): void {
+    this.paragraphPauseDurationGroup.style.display = enabled ? 'block' : 'none';
+    this.paragraphRampUpGroup.style.display = enabled ? 'block' : 'none';
   }
 
   private updateStartingWpmMax(targetWpm: number): void {
@@ -131,6 +159,37 @@ class PopupController {
     this.autostartDelaySlider.addEventListener('change', async () => {
       const autostartDelay = parseFloat(this.autostartDelaySlider.value);
       await saveSetting('autostartDelay', autostartDelay);
+    });
+
+    this.paragraphPauseEnabledCheckbox.addEventListener('change', async () => {
+      const enabled = this.paragraphPauseEnabledCheckbox.checked;
+      this.updateParagraphPauseOptionsVisibility(enabled);
+      await saveSetting('paragraphPauseEnabled', enabled);
+    });
+
+    this.paragraphPauseDurationSlider.addEventListener('input', () => {
+      const duration = parseFloat(this.paragraphPauseDurationSlider.value);
+      this.paragraphPauseDurationValue.textContent = duration.toString();
+    });
+
+    this.paragraphPauseDurationSlider.addEventListener('change', async () => {
+      const duration = parseFloat(this.paragraphPauseDurationSlider.value);
+      await saveSetting('paragraphPauseDuration', duration);
+    });
+
+    this.paragraphRampUpCheckbox.addEventListener('change', async () => {
+      const enabled = this.paragraphRampUpCheckbox.checked;
+      await saveSetting('paragraphRampUp', enabled);
+    });
+
+    this.titleDisplayCheckbox.addEventListener('change', async () => {
+      const enabled = this.titleDisplayCheckbox.checked;
+      await saveSetting('titleDisplay', enabled);
+    });
+
+    this.headingDisplayCheckbox.addEventListener('change', async () => {
+      const enabled = this.headingDisplayCheckbox.checked;
+      await saveSetting('headingDisplay', enabled);
     });
 
     this.modeManualBtn.addEventListener('click', async () => {

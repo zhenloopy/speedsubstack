@@ -2,13 +2,27 @@ export class Overlay {
   private overlay: HTMLDivElement | null = null;
   private wordContainer: HTMLDivElement | null = null;
   private wordElement: HTMLDivElement | null = null;
+  private titleElement: HTMLDivElement | null = null;
+  private headingElement: HTMLDivElement | null = null;
   private fontSize: number = 64;
+  private titleDisplay: boolean = true;
+  private headingDisplay: boolean = false;
 
   create(): void {
     if (this.overlay) return;
 
     this.overlay = document.createElement('div');
     this.overlay.id = 'speedsubstack-overlay';
+
+    // Title element (shown at top)
+    this.titleElement = document.createElement('div');
+    this.titleElement.id = 'speedsubstack-title';
+    this.titleElement.style.display = this.titleDisplay ? 'block' : 'none';
+
+    // Heading element (shown below title)
+    this.headingElement = document.createElement('div');
+    this.headingElement.id = 'speedsubstack-heading';
+    this.headingElement.style.display = this.headingDisplay ? 'block' : 'none';
 
     this.wordContainer = document.createElement('div');
     this.wordContainer.id = 'speedsubstack-word-container';
@@ -37,6 +51,8 @@ export class Overlay {
     `;
 
     this.overlay.appendChild(closeButton);
+    this.overlay.appendChild(this.titleElement);
+    this.overlay.appendChild(this.headingElement);
     this.overlay.appendChild(this.wordContainer);
     this.overlay.appendChild(shortcuts);
 
@@ -68,6 +84,32 @@ export class Overlay {
     }
   }
 
+  setTitle(title: string | null): void {
+    if (this.titleElement) {
+      this.titleElement.textContent = title || '';
+    }
+  }
+
+  setHeading(heading: string | null): void {
+    if (this.headingElement) {
+      this.headingElement.textContent = heading || '';
+    }
+  }
+
+  setTitleDisplay(enabled: boolean): void {
+    this.titleDisplay = enabled;
+    if (this.titleElement) {
+      this.titleElement.style.display = enabled ? 'block' : 'none';
+    }
+  }
+
+  setHeadingDisplay(enabled: boolean): void {
+    this.headingDisplay = enabled;
+    if (this.headingElement) {
+      this.headingElement.style.display = enabled ? 'block' : 'none';
+    }
+  }
+
   getElement(): HTMLDivElement | null {
     return this.overlay;
   }
@@ -81,5 +123,7 @@ export class Overlay {
     this.overlay = null;
     this.wordContainer = null;
     this.wordElement = null;
+    this.titleElement = null;
+    this.headingElement = null;
   }
 }
