@@ -1,7 +1,3 @@
-/**
- * WPM slider UI component
- */
-
 export interface WpmSliderCallbacks {
   onChange: (wpm: number) => void;
 }
@@ -18,9 +14,6 @@ export class WpmSlider {
     this.callbacks = callbacks;
   }
 
-  /**
-   * Create slider DOM structure
-   */
   create(parent: HTMLElement): void {
     if (this.container) return;
 
@@ -62,16 +55,6 @@ export class WpmSlider {
     }
   }
 
-  /**
-   * Get current WPM value
-   */
-  getWpm(): number {
-    return this.currentWpm;
-  }
-
-  /**
-   * Set WPM value programmatically
-   */
   setWpm(wpm: number): void {
     this.currentWpm = Math.max(100, Math.min(800, wpm));
     if (this.slider) {
@@ -80,25 +63,16 @@ export class WpmSlider {
     this.updateLabel();
   }
 
-  /**
-   * Increase WPM by amount
-   */
   increaseWpm(amount: number = 25): void {
     this.setWpm(this.currentWpm + amount);
     this.callbacks.onChange(this.currentWpm);
   }
 
-  /**
-   * Decrease WPM by amount
-   */
   decreaseWpm(amount: number = 25): void {
     this.setWpm(this.currentWpm - amount);
     this.callbacks.onChange(this.currentWpm);
   }
 
-  /**
-   * Destroy slider
-   */
   destroy(): void {
     this.container?.remove();
     this.container = null;

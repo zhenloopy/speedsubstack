@@ -1,16 +1,1 @@
-/* Article Word Highlighting Styles */
-.speedsubstack-word {
-  transition: background-color 0.15s ease;
-}
-
-.speedsubstack-word-current {
-  background-color: #ffeb3b;
-  border-radius: 2px;
-  padding: 0 2px;
-  margin: 0 -2px;
-}
-
-/* Ensure highlighting works well with different text colors */
-.speedsubstack-word-current {
-  color: #000000 !important;
-}
+/* Highlighter styles are now injected dynamically via JavaScript for performance */

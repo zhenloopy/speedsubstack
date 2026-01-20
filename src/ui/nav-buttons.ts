@@ -1,7 +1,3 @@
-/**
- * Navigation buttons (rewind/forward) component
- */
-
 export interface NavButtonsCallbacks {
   onRewind: () => void;
   onForward: () => void;
@@ -16,11 +12,7 @@ export class NavButtons {
     this.callbacks = callbacks;
   }
 
-  /**
-   * Create nav buttons DOM structure
-   */
   create(parent: HTMLElement): void {
-    // Rewind button (bottom-left)
     this.rewindButton = document.createElement('button');
     this.rewindButton.id = 'speedsubstack-rewind';
     this.rewindButton.className = 'speedsubstack-nav-btn';
@@ -31,26 +23,7 @@ export class NavButtons {
       <span>-10s</span>
     `;
     this.rewindButton.setAttribute('aria-label', 'Rewind 10 seconds');
-    this.rewindButton.style.cssText = `
-      position: fixed;
-      bottom: 40px;
-      left: 40px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 10px 16px;
-      background: rgba(255, 255, 255, 0.1);
-      border: none;
-      border-radius: 20px;
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 14px;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background 0.15s ease;
-      z-index: 1000000;
-    `;
 
-    // Forward button (bottom-right)
     this.forwardButton = document.createElement('button');
     this.forwardButton.id = 'speedsubstack-forward';
     this.forwardButton.className = 'speedsubstack-nav-btn';
@@ -61,38 +34,11 @@ export class NavButtons {
       </svg>
     `;
     this.forwardButton.setAttribute('aria-label', 'Forward 10 seconds');
-    this.forwardButton.style.cssText = `
-      position: fixed;
-      bottom: 40px;
-      right: 40px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 10px 16px;
-      background: rgba(255, 255, 255, 0.1);
-      border: none;
-      border-radius: 20px;
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 14px;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background 0.15s ease;
-      z-index: 1000000;
-    `;
-
-    // Style the SVG icons
-    const svgStyle = `
-      width: 18px;
-      height: 18px;
-    `;
-    this.rewindButton.querySelector('svg')!.style.cssText = svgStyle;
-    this.forwardButton.querySelector('svg')!.style.cssText = svgStyle;
 
     parent.appendChild(this.rewindButton);
     parent.appendChild(this.forwardButton);
 
     this.setupEventListeners();
-    this.setupHoverStyles();
   }
 
   private setupEventListeners(): void {
@@ -105,39 +51,6 @@ export class NavButtons {
     });
   }
 
-  private setupHoverStyles(): void {
-    const hoverIn = (btn: HTMLButtonElement) => {
-      btn.style.background = 'rgba(255, 255, 255, 0.2)';
-    };
-    const hoverOut = (btn: HTMLButtonElement) => {
-      btn.style.background = 'rgba(255, 255, 255, 0.1)';
-    };
-
-    this.rewindButton?.addEventListener('mouseenter', () => hoverIn(this.rewindButton!));
-    this.rewindButton?.addEventListener('mouseleave', () => hoverOut(this.rewindButton!));
-    this.forwardButton?.addEventListener('mouseenter', () => hoverIn(this.forwardButton!));
-    this.forwardButton?.addEventListener('mouseleave', () => hoverOut(this.forwardButton!));
-  }
-
-  /**
-   * Show buttons
-   */
-  show(): void {
-    if (this.rewindButton) this.rewindButton.style.display = 'flex';
-    if (this.forwardButton) this.forwardButton.style.display = 'flex';
-  }
-
-  /**
-   * Hide buttons
-   */
-  hide(): void {
-    if (this.rewindButton) this.rewindButton.style.display = 'none';
-    if (this.forwardButton) this.forwardButton.style.display = 'none';
-  }
-
-  /**
-   * Destroy buttons
-   */
   destroy(): void {
     this.rewindButton?.remove();
     this.forwardButton?.remove();

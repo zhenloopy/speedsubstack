@@ -1,7 +1,3 @@
-/**
- * Timing controller for word advancement
- */
-
 import { getWordDurationModifier } from '../ui/word-display';
 import type { ExtractedWord } from '../parser/article-extractor';
 
@@ -26,25 +22,16 @@ export class TimingController {
     this.callbacks = callbacks;
   }
 
-  /**
-   * Set the words to read
-   */
   setWords(words: ExtractedWord[]): void {
     this.words = words;
     this.currentIndex = 0;
     this.callbacks.onProgress(0, words.length);
   }
 
-  /**
-   * Get base interval in milliseconds for current WPM
-   */
   private getBaseInterval(): number {
     return 60000 / this.wpm;
   }
 
-  /**
-   * Get interval for current word (adjusted for punctuation, etc.)
-   */
   private getCurrentInterval(): number {
     const word = this.words[this.currentIndex];
     if (!word) return this.getBaseInterval();
@@ -53,9 +40,6 @@ export class TimingController {
     return this.getBaseInterval() * modifier;
   }
 
-  /**
-   * Start playing
-   */
   play(): void {
     if (this.isPlaying || this.words.length === 0) return;
 
@@ -63,15 +47,10 @@ export class TimingController {
     this.lastTickTime = performance.now();
     this.accumulatedTime = 0;
 
-    // Show current word immediately
     this.showCurrentWord();
-
     this.tick();
   }
 
-  /**
-   * Pause playing
-   */
   pause(): void {
     this.isPlaying = false;
     if (this.timerId !== null) {
@@ -80,27 +59,10 @@ export class TimingController {
     }
   }
 
-  /**
-   * Toggle play/pause
-   */
-  togglePlayPause(): void {
-    if (this.isPlaying) {
-      this.pause();
-    } else {
-      this.play();
-    }
-  }
-
-  /**
-   * Check if currently playing
-   */
   getIsPlaying(): boolean {
     return this.isPlaying;
   }
 
-  /**
-   * Main animation loop
-   */
   private tick = (): void => {
     if (!this.isPlaying) return;
 
@@ -119,9 +81,6 @@ export class TimingController {
     this.timerId = requestAnimationFrame(this.tick);
   };
 
-  /**
-   * Advance to next word
-   */
   private advance(): void {
     this.currentIndex++;
 
@@ -134,9 +93,6 @@ export class TimingController {
     this.showCurrentWord();
   }
 
-  /**
-   * Show the current word
-   */
   private showCurrentWord(): void {
     const word = this.words[this.currentIndex];
     if (word) {
@@ -145,80 +101,37 @@ export class TimingController {
     }
   }
 
-  /**
-   * Set current word index
-   */
   setIndex(index: number): void {
     this.currentIndex = Math.max(0, Math.min(index, this.words.length - 1));
     this.accumulatedTime = 0;
     this.showCurrentWord();
   }
 
-  /**
-   * Get current index
-   */
   getIndex(): number {
     return this.currentIndex;
   }
 
-  /**
-   * Set WPM
-   */
   setWpm(wpm: number): void {
     this.wpm = Math.max(100, Math.min(800, wpm));
   }
 
-  /**
-   * Get WPM
-   */
   getWpm(): number {
     return this.wpm;
   }
 
-  /**
-   * Skip forward by a number of words
-   */
   skipForward(words: number): void {
     this.setIndex(this.currentIndex + words);
   }
 
-  /**
-   * Skip backward by a number of words
-   */
   skipBackward(words: number): void {
     this.setIndex(this.currentIndex - words);
   }
 
-  /**
-   * Seek to a progress percentage (0-1)
-   */
   seekToProgress(progress: number): void {
     const index = Math.floor(progress * this.words.length);
     this.setIndex(index);
   }
 
-  /**
-   * Get total word count
-   */
-  getTotalWords(): number {
-    return this.words.length;
-  }
-
-  /**
-   * Reset to beginning
-   */
-  reset(): void {
-    this.pause();
-    this.currentIndex = 0;
-    this.accumulatedTime = 0;
-    if (this.words.length > 0) {
-      this.showCurrentWord();
-    }
-  }
-
-  /**
-   * Destroy and clean up
-   */
   destroy(): void {
     this.pause();
     this.words = [];

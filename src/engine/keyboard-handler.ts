@@ -1,7 +1,3 @@
-/**
- * Keyboard shortcut handler for the speed reader
- */
-
 export interface KeyboardCallbacks {
   onPlayPause: () => void;
   onSkipForward: () => void;
@@ -21,29 +17,19 @@ export class KeyboardHandler {
     this.boundHandler = this.handleKeydown.bind(this);
   }
 
-  /**
-   * Enable keyboard shortcuts
-   */
   enable(): void {
     if (this.isEnabled) return;
     this.isEnabled = true;
     document.addEventListener('keydown', this.boundHandler);
   }
 
-  /**
-   * Disable keyboard shortcuts
-   */
   disable(): void {
     if (!this.isEnabled) return;
     this.isEnabled = false;
     document.removeEventListener('keydown', this.boundHandler);
   }
 
-  /**
-   * Handle keydown events
-   */
   private handleKeydown(e: KeyboardEvent): void {
-    // Ignore if focus is on an input element
     if (this.isInputFocused()) return;
 
     switch (e.code) {
@@ -79,9 +65,6 @@ export class KeyboardHandler {
     }
   }
 
-  /**
-   * Check if focus is on an input element
-   */
   private isInputFocused(): boolean {
     const activeElement = document.activeElement;
     if (!activeElement) return false;
@@ -95,16 +78,6 @@ export class KeyboardHandler {
     );
   }
 
-  /**
-   * Check if enabled
-   */
-  getIsEnabled(): boolean {
-    return this.isEnabled;
-  }
-
-  /**
-   * Destroy handler
-   */
   destroy(): void {
     this.disable();
   }

@@ -1,7 +1,3 @@
-/**
- * Floating start button for manual activation mode
- */
-
 export interface StartButtonCallbacks {
   onStart: () => void;
 }
@@ -14,9 +10,6 @@ export class StartButton {
     this.callbacks = callbacks;
   }
 
-  /**
-   * Create the start button
-   */
   create(): void {
     if (this.button) return;
 
@@ -37,31 +30,15 @@ export class StartButton {
     });
   }
 
-  /**
-   * Show the button
-   */
   show(): void {
     if (!this.button) this.create();
     this.button!.classList.remove('hidden');
   }
 
-  /**
-   * Hide the button
-   */
   hide(): void {
     this.button?.classList.add('hidden');
   }
 
-  /**
-   * Check if button is visible
-   */
-  isVisible(): boolean {
-    return this.button !== null && !this.button.classList.contains('hidden');
-  }
-
-  /**
-   * Destroy the button
-   */
   destroy(): void {
     this.button?.remove();
     this.button = null;

@@ -1,12 +1,10 @@
-/**
- * Popup script for SpeedSubstack settings
- */
-
 import { loadSettings, saveSetting, type Settings } from '../storage/settings';
 
 class PopupController {
   private wpmSlider: HTMLInputElement;
   private wpmValue: HTMLElement;
+  private fontSizeSlider: HTMLInputElement;
+  private fontSizeValue: HTMLElement;
   private modeManualBtn: HTMLButtonElement;
   private modeAutoBtn: HTMLButtonElement;
   private modeHint: HTMLElement;
@@ -14,6 +12,8 @@ class PopupController {
   constructor() {
     this.wpmSlider = document.getElementById('default-wpm') as HTMLInputElement;
     this.wpmValue = document.getElementById('wpm-value') as HTMLElement;
+    this.fontSizeSlider = document.getElementById('font-size') as HTMLInputElement;
+    this.fontSizeValue = document.getElementById('font-size-value') as HTMLElement;
     this.modeManualBtn = document.getElementById('mode-manual') as HTMLButtonElement;
     this.modeAutoBtn = document.getElementById('mode-auto') as HTMLButtonElement;
     this.modeHint = document.getElementById('mode-hint') as HTMLElement;
@@ -28,11 +28,10 @@ class PopupController {
   }
 
   private applySettings(settings: Settings): void {
-    // Apply WPM
     this.wpmSlider.value = settings.wpm.toString();
     this.wpmValue.textContent = settings.wpm.toString();
-
-    // Apply activation mode
+    this.fontSizeSlider.value = settings.fontSize.toString();
+    this.fontSizeValue.textContent = settings.fontSize.toString();
     this.setActivationMode(settings.activationMode);
   }
 
@@ -49,7 +48,6 @@ class PopupController {
   }
 
   private setupEventListeners(): void {
-    // WPM slider
     this.wpmSlider.addEventListener('input', () => {
       const wpm = parseInt(this.wpmSlider.value, 10);
       this.wpmValue.textContent = wpm.toString();
@@ -60,13 +58,21 @@ class PopupController {
       await saveSetting('wpm', wpm);
     });
 
-    // Manual mode button
+    this.fontSizeSlider.addEventListener('input', () => {
+      const fontSize = parseInt(this.fontSizeSlider.value, 10);
+      this.fontSizeValue.textContent = fontSize.toString();
+    });
+
+    this.fontSizeSlider.addEventListener('change', async () => {
+      const fontSize = parseInt(this.fontSizeSlider.value, 10);
+      await saveSetting('fontSize', fontSize);
+    });
+
     this.modeManualBtn.addEventListener('click', async () => {
       this.setActivationMode('manual');
       await saveSetting('activationMode', 'manual');
     });
 
-    // Auto mode button
     this.modeAutoBtn.addEventListener('click', async () => {
       this.setActivationMode('auto');
       await saveSetting('activationMode', 'auto');
@@ -74,7 +80,6 @@ class PopupController {
   }
 }
 
-// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   new PopupController();
 });

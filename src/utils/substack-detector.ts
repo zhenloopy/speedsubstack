@@ -1,16 +1,9 @@
-/**
- * Utilities for detecting Substack article pages
- */
-
 export interface SubstackDetectionResult {
   isSubstack: boolean;
   isArticle: boolean;
   articleContainer: HTMLElement | null;
 }
 
-/**
- * Known selectors for Substack article content containers
- */
 const ARTICLE_SELECTORS = [
   '.post-content',
   '.body.markup',
@@ -22,9 +15,6 @@ const ARTICLE_SELECTORS = [
   '.post',
 ];
 
-/**
- * Selectors that indicate we're NOT on an article page
- */
 const NON_ARTICLE_INDICATORS = [
   '.post-list',
   '.publication-homepage',
@@ -32,17 +22,11 @@ const NON_ARTICLE_INDICATORS = [
   '.subscribe-page',
 ];
 
-/**
- * Checks if the current page is a Substack domain
- */
 export function isSubstackDomain(): boolean {
   const hostname = window.location.hostname;
   return hostname === 'substack.com' || hostname.endsWith('.substack.com');
 }
 
-/**
- * Finds the article content container on the page
- */
 export function findArticleContainer(): HTMLElement | null {
   for (const selector of ARTICLE_SELECTORS) {
     const element = document.querySelector<HTMLElement>(selector);
@@ -57,9 +41,6 @@ export function findArticleContainer(): HTMLElement | null {
   return null;
 }
 
-/**
- * Checks if the page is a non-article page (homepage, archive, etc.)
- */
 export function isNonArticlePage(): boolean {
   for (const selector of NON_ARTICLE_INDICATORS) {
     if (document.querySelector(selector)) {
@@ -69,9 +50,6 @@ export function isNonArticlePage(): boolean {
   return false;
 }
 
-/**
- * Comprehensive detection of whether we're on a readable Substack article
- */
 export function detectSubstackArticle(): SubstackDetectionResult {
   const isSubstack = isSubstackDomain();
 
@@ -89,31 +67,64 @@ export function detectSubstackArticle(): SubstackDetectionResult {
   return { isSubstack, isArticle, articleContainer };
 }
 
-/**
- * Wait for the article container to be available in the DOM
- * (useful for SPAs or slow-loading pages)
- */
 export function waitForArticle(timeout = 10000): Promise<SubstackDetectionResult> {
   return new Promise((resolve) => {
-    const startTime = Date.now();
+    // Check immediately first
+    const immediate = detectSubstackArticle();
+    if (immediate.isArticle) {
+      resolve(immediate);
+      return;
+    }
 
-    const check = () => {
-      const elapsed = Date.now() - startTime;
-      const result = detectSubstackArticle();
+    // Not substack? Return immediately
+    if (!immediate.isSubstack) {
+      resolve(immediate);
+      return;
+    }
 
-      if (result.isArticle) {
-        resolve(result);
-        return;
+    let resolved = false;
+    let observer: MutationObserver | null = null;
+    let timeoutId: number | null = null;
+
+    const cleanup = () => {
+      if (observer) {
+        observer.disconnect();
+        observer = null;
       }
-
-      if (elapsed > timeout) {
-        resolve(result);
-        return;
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
       }
-
-      requestAnimationFrame(check);
     };
 
-    check();
+    const check = () => {
+      if (resolved) return;
+      
+      const result = detectSubstackArticle();
+      if (result.isArticle) {
+        resolved = true;
+        cleanup();
+        resolve(result);
+      }
+    };
+
+    // Use MutationObserver instead of RAF polling
+    observer = new MutationObserver(() => {
+      // Debounce checks - don't check on every single mutation
+      check();
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    // Set timeout
+    timeoutId = window.setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      resolve(detectSubstackArticle());
+    }, timeout);
   });
 }

@@ -1,34 +1,27 @@
-/**
- * Settings storage using chrome.storage.local
- */
-
 export interface Settings {
   wpm: number;
   activationMode: 'auto' | 'manual';
+  fontSize: number;
 }
 
 const DEFAULT_SETTINGS: Settings = {
   wpm: 300,
   activationMode: 'manual',
+  fontSize: 64,
 };
 
-/**
- * Load settings from chrome.storage.local
- */
 export async function loadSettings(): Promise<Settings> {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['wpm', 'activationMode'], (result) => {
+    chrome.storage.local.get(['wpm', 'activationMode', 'fontSize'], (result) => {
       resolve({
         wpm: result.wpm ?? DEFAULT_SETTINGS.wpm,
         activationMode: result.activationMode ?? DEFAULT_SETTINGS.activationMode,
+        fontSize: result.fontSize ?? DEFAULT_SETTINGS.fontSize,
       });
     });
   });
 }
 
-/**
- * Save a single setting to chrome.storage.local
- */
 export async function saveSetting<K extends keyof Settings>(
   key: K,
   value: Settings[K]
@@ -38,18 +31,6 @@ export async function saveSetting<K extends keyof Settings>(
   });
 }
 
-/**
- * Save all settings to chrome.storage.local
- */
-export async function saveSettings(settings: Partial<Settings>): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.local.set(settings, resolve);
-  });
-}
-
-/**
- * Listen for settings changes
- */
 export function onSettingsChange(
   callback: (changes: Partial<Settings>) => void
 ): () => void {
@@ -66,6 +47,9 @@ export function onSettingsChange(
     }
     if (changes.activationMode) {
       settingsChanges.activationMode = changes.activationMode.newValue;
+    }
+    if (changes.fontSize) {
+      settingsChanges.fontSize = changes.fontSize.newValue;
     }
 
     if (Object.keys(settingsChanges).length > 0) {

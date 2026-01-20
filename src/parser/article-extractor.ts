@@ -1,16 +1,14 @@
-/**
- * Article content extractor for Substack pages
- */
-
-import { tokenizeText, cleanText, type WordToken } from './word-tokenizer';
+import { tokenizeText, cleanText } from './word-tokenizer';
 
 export interface ExtractedWord {
   word: string;
   index: number;
-  element: HTMLElement;
   paragraphIndex: number;
   isParagraphStart: boolean;
-  spanId: string;
+  // Text node reference for Range-based highlighting
+  textNode: Text;
+  startOffset: number;
+  endOffset: number;
 }
 
 export interface ExtractionResult {
@@ -19,9 +17,6 @@ export interface ExtractionResult {
   totalWords: number;
 }
 
-/**
- * Elements to skip when extracting content
- */
 const SKIP_SELECTORS = [
   'script',
   'style',
@@ -39,17 +34,11 @@ const SKIP_SELECTORS = [
   'pre',
 ];
 
-/**
- * Block elements that start new paragraphs
- */
 const BLOCK_ELEMENTS = new Set([
   'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
   'LI', 'BLOCKQUOTE', 'DIV', 'SECTION', 'ARTICLE',
 ]);
 
-/**
- * Check if an element should be skipped
- */
 function shouldSkipElement(element: Element): boolean {
   for (const selector of SKIP_SELECTORS) {
     if (element.matches(selector)) return true;
@@ -58,9 +47,6 @@ function shouldSkipElement(element: Element): boolean {
   return false;
 }
 
-/**
- * Collect all text nodes from a container
- */
 function collectTextNodes(container: HTMLElement): { node: Text; blockAncestor: Element | null }[] {
   const textNodes: { node: Text; blockAncestor: Element | null }[] = [];
 
@@ -96,9 +82,6 @@ function collectTextNodes(container: HTMLElement): { node: Text; blockAncestor: 
   return textNodes;
 }
 
-/**
- * Extract article content and wrap each word in a span
- */
 export function extractArticleContent(container: HTMLElement): ExtractionResult {
   const words: ExtractedWord[] = [];
   const paragraphStartIndices: number[] = [];
@@ -106,17 +89,14 @@ export function extractArticleContent(container: HTMLElement): ExtractionResult 
   let paragraphIndex = 0;
   let lastBlockElement: Element | null = null;
 
-  // First, collect all text nodes (before modifying DOM)
   const textNodes = collectTextNodes(container);
 
   console.log('[SpeedSubstack] Found', textNodes.length, 'text nodes to process');
 
-  // Then process each text node
   for (const { node, blockAncestor } of textNodes) {
-    const text = cleanText(node.textContent || '');
-    if (!text) continue;
+    const rawText = node.textContent || '';
+    if (!rawText.trim()) continue;
 
-    // Check if we're in a new block element (new paragraph)
     if (blockAncestor !== lastBlockElement && blockAncestor) {
       lastBlockElement = blockAncestor;
       if (wordIndex > 0) {
@@ -125,46 +105,28 @@ export function extractArticleContent(container: HTMLElement): ExtractionResult 
       paragraphStartIndices.push(wordIndex);
     }
 
-    // Tokenize the text
-    const tokens = tokenizeText(text, paragraphIndex, wordIndex);
-
-    // Wrap each word in a span
-    const fragment = document.createDocumentFragment();
-
-    for (const token of tokens) {
-      const spanId = `speedsubstack-word-${token.index}`;
-      const span = document.createElement('span');
-      span.id = spanId;
-      span.className = 'speedsubstack-word';
-      span.textContent = token.word;
-      span.dataset.wordIndex = token.index.toString();
+    // Find word boundaries in the original text node
+    const wordRegex = /\S+/g;
+    let match;
+    
+    while ((match = wordRegex.exec(rawText)) !== null) {
+      const word = match[0];
+      const startOffset = match.index;
+      const endOffset = startOffset + word.length;
 
       words.push({
-        word: token.word,
-        index: token.index,
-        element: span,
-        paragraphIndex: token.paragraphIndex,
-        isParagraphStart: token.isParagraphStart,
-        spanId,
+        word,
+        index: wordIndex,
+        paragraphIndex,
+        isParagraphStart: words.length === 0 || 
+          (paragraphStartIndices.length > 0 && paragraphStartIndices[paragraphStartIndices.length - 1] === wordIndex),
+        textNode: node,
+        startOffset,
+        endOffset,
       });
-
-      fragment.appendChild(span);
-
-      // Add space between words
-      if (token.index < tokens[tokens.length - 1].index) {
-        fragment.appendChild(document.createTextNode(' '));
-      }
 
       wordIndex++;
     }
-
-    // Add trailing space if original text had it
-    if (node.textContent?.endsWith(' ')) {
-      fragment.appendChild(document.createTextNode(' '));
-    }
-
-    // Replace the text node with our spans
-    node.parentNode?.replaceChild(fragment, node);
   }
 
   console.log('[SpeedSubstack] Extracted', words.length, 'words from', paragraphStartIndices.length, 'paragraphs');
@@ -176,9 +138,6 @@ export function extractArticleContent(container: HTMLElement): ExtractionResult 
   };
 }
 
-/**
- * Find the nearest block-level ancestor of an element
- */
 function findBlockAncestor(element: Element): Element | null {
   let current: Element | null = element;
 
@@ -192,9 +151,6 @@ function findBlockAncestor(element: Element): Element | null {
   return null;
 }
 
-/**
- * Get the paragraph start index for a given word index
- */
 export function getParagraphStart(wordIndex: number, paragraphStartIndices: number[]): number {
   let paragraphStart = 0;
 
@@ -207,20 +163,4 @@ export function getParagraphStart(wordIndex: number, paragraphStartIndices: numb
   }
 
   return paragraphStart;
-}
-
-/**
- * Clean up word spans (for when extension is disabled/removed)
- */
-export function cleanupWordSpans(container: HTMLElement): void {
-  const spans = container.querySelectorAll('.speedsubstack-word');
-
-  spans.forEach((span) => {
-    const text = span.textContent || '';
-    const textNode = document.createTextNode(text);
-    span.parentNode?.replaceChild(textNode, span);
-  });
-
-  // Normalize text nodes
-  container.normalize();
 }
