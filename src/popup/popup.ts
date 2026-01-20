@@ -7,6 +7,8 @@ class PopupController {
   private fontSizeValue: HTMLElement;
   private rampTimeSlider: HTMLInputElement;
   private rampTimeValue: HTMLElement;
+  private startingWpmSlider: HTMLInputElement;
+  private startingWpmValue: HTMLElement;
   private modeManualBtn: HTMLButtonElement;
   private modeAutoBtn: HTMLButtonElement;
   private modeHint: HTMLElement;
@@ -18,6 +20,8 @@ class PopupController {
     this.fontSizeValue = document.getElementById('font-size-value') as HTMLElement;
     this.rampTimeSlider = document.getElementById('ramp-time') as HTMLInputElement;
     this.rampTimeValue = document.getElementById('ramp-time-value') as HTMLElement;
+    this.startingWpmSlider = document.getElementById('starting-wpm') as HTMLInputElement;
+    this.startingWpmValue = document.getElementById('starting-wpm-value') as HTMLElement;
     this.modeManualBtn = document.getElementById('mode-manual') as HTMLButtonElement;
     this.modeAutoBtn = document.getElementById('mode-auto') as HTMLButtonElement;
     this.modeHint = document.getElementById('mode-hint') as HTMLElement;
@@ -38,7 +42,19 @@ class PopupController {
     this.fontSizeValue.textContent = settings.fontSize.toString();
     this.rampTimeSlider.value = settings.rampTime.toString();
     this.rampTimeValue.textContent = settings.rampTime.toString();
+    this.updateStartingWpmMax(settings.wpm);
+    this.startingWpmSlider.value = settings.startingWpm.toString();
+    this.startingWpmValue.textContent = settings.startingWpm.toString();
     this.setActivationMode(settings.activationMode);
+  }
+
+  private updateStartingWpmMax(targetWpm: number): void {
+    this.startingWpmSlider.max = targetWpm.toString();
+    const currentStarting = parseInt(this.startingWpmSlider.value, 10);
+    if (currentStarting > targetWpm) {
+      this.startingWpmSlider.value = targetWpm.toString();
+      this.startingWpmValue.textContent = targetWpm.toString();
+    }
   }
 
   private setActivationMode(mode: 'auto' | 'manual'): void {
@@ -57,11 +73,16 @@ class PopupController {
     this.wpmSlider.addEventListener('input', () => {
       const wpm = parseInt(this.wpmSlider.value, 10);
       this.wpmValue.textContent = wpm.toString();
+      this.updateStartingWpmMax(wpm);
     });
 
     this.wpmSlider.addEventListener('change', async () => {
       const wpm = parseInt(this.wpmSlider.value, 10);
       await saveSetting('wpm', wpm);
+      const currentStarting = parseInt(this.startingWpmSlider.value, 10);
+      if (currentStarting > wpm) {
+        await saveSetting('startingWpm', wpm);
+      }
     });
 
     this.fontSizeSlider.addEventListener('input', () => {
@@ -82,6 +103,16 @@ class PopupController {
     this.rampTimeSlider.addEventListener('change', async () => {
       const rampTime = parseInt(this.rampTimeSlider.value, 10);
       await saveSetting('rampTime', rampTime);
+    });
+
+    this.startingWpmSlider.addEventListener('input', () => {
+      const startingWpm = parseInt(this.startingWpmSlider.value, 10);
+      this.startingWpmValue.textContent = startingWpm.toString();
+    });
+
+    this.startingWpmSlider.addEventListener('change', async () => {
+      const startingWpm = parseInt(this.startingWpmSlider.value, 10);
+      await saveSetting('startingWpm', startingWpm);
     });
 
     this.modeManualBtn.addEventListener('click', async () => {

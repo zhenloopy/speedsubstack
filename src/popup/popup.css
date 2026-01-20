@@ -79,7 +79,8 @@ input[type="range"]::-moz-range-thumb {
 
 #wpm-value,
 #font-size-value,
-#ramp-time-value {
+#ramp-time-value,
+#starting-wpm-value {
   min-width: 45px;
   text-align: right;
   font-size: 14px;
@@ -118,6 +119,23 @@ input[type="range"]::-moz-range-thumb {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 8px;
+}
+
+.advanced-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.advanced-section h2 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.advanced-section .setting-group:last-child {
+  margin-bottom: 0;
 }
 
 .shortcuts-section {

@@ -12,7 +12,7 @@
     <p class="tagline">Speed reading for Substack</p>
 
     <div class="setting-group">
-      <label for="default-wpm">Default Speed (WPM)</label>
+      <label for="default-wpm">Target Speed (WPM)</label>
       <div class="slider-container">
         <input type="range" id="default-wpm" min="100" max="800" step="25" value="300">
         <span id="wpm-value">300</span>
@@ -28,21 +28,33 @@
     </div>
 
     <div class="setting-group">
-      <label for="ramp-time">Ramp Time (seconds)</label>
-      <div class="slider-container">
-        <input type="range" id="ramp-time" min="0" max="120" step="5" value="10">
-        <span id="ramp-time-value">10</span>
-      </div>
-      <p class="hint">Speed gradually increases from 100 WPM to target</p>
-    </div>
-
-    <div class="setting-group">
       <label for="activation-mode">Activation Mode</label>
       <div class="toggle-container">
         <button id="mode-manual" class="mode-btn active">Manual</button>
         <button id="mode-auto" class="mode-btn">Auto</button>
       </div>
       <p class="hint" id="mode-hint">Click the button on article pages to start</p>
+    </div>
+
+    <div class="advanced-section">
+      <h2>Advanced</h2>
+      
+      <div class="setting-group">
+        <label for="starting-wpm">Starting Speed (WPM)</label>
+        <div class="slider-container">
+          <input type="range" id="starting-wpm" min="100" max="300" step="25" value="100">
+          <span id="starting-wpm-value">100</span>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <label for="ramp-time">Ramp Time (seconds)</label>
+        <div class="slider-container">
+          <input type="range" id="ramp-time" min="0" max="120" step="5" value="10">
+          <span id="ramp-time-value">10</span>
+        </div>
+        <p class="hint">Speed gradually increases from starting to target</p>
+      </div>
     </div>
 
     <div class="shortcuts-section">
