@@ -22,6 +22,12 @@ const NON_ARTICLE_INDICATORS = [
   '.subscribe-page',
 ];
 
+// URL patterns where the extension should not activate (editor pages, etc.)
+const EXCLUDED_URL_PATTERNS = [
+  '/publish/',
+  '/publish?',
+];
+
 export function isSubstackDomain(): boolean {
   const hostname = window.location.hostname;
   return hostname === 'substack.com' || hostname.endsWith('.substack.com');
@@ -33,7 +39,6 @@ export function findArticleContainer(): HTMLElement | null {
     if (element) {
       const textLength = element.textContent?.trim().length || 0;
       if (textLength > 100) {
-        console.log('[SpeedSubstack] Found article container:', selector);
         return element;
       }
     }
@@ -50,11 +55,21 @@ export function isNonArticlePage(): boolean {
   return false;
 }
 
+export function isExcludedPage(): boolean {
+  const path = window.location.pathname + window.location.search;
+  return EXCLUDED_URL_PATTERNS.some(pattern => path.includes(pattern));
+}
+
 export function detectSubstackArticle(): SubstackDetectionResult {
   const isSubstack = isSubstackDomain();
 
   if (!isSubstack) {
     return { isSubstack: false, isArticle: false, articleContainer: null };
+  }
+
+  // Don't activate on editor/publish pages
+  if (isExcludedPage()) {
+    return { isSubstack: true, isArticle: false, articleContainer: null };
   }
 
   if (isNonArticlePage()) {
@@ -86,6 +101,8 @@ export function waitForArticle(timeout = 10000): Promise<SubstackDetectionResult
     let observer: MutationObserver | null = null;
     let timeoutId: number | null = null;
 
+    let debounceId: number | null = null;
+
     const cleanup = () => {
       if (observer) {
         observer.disconnect();
@@ -94,6 +111,10 @@ export function waitForArticle(timeout = 10000): Promise<SubstackDetectionResult
       if (timeoutId !== null) {
         clearTimeout(timeoutId);
         timeoutId = null;
+      }
+      if (debounceId !== null) {
+        clearTimeout(debounceId);
+        debounceId = null;
       }
     };
 
@@ -108,10 +129,13 @@ export function waitForArticle(timeout = 10000): Promise<SubstackDetectionResult
       }
     };
 
-    // Use MutationObserver instead of RAF polling
+    // Use MutationObserver with debounce to avoid excessive checks
     observer = new MutationObserver(() => {
-      // Debounce checks - don't check on every single mutation
-      check();
+      if (debounceId !== null) return;
+      debounceId = window.setTimeout(() => {
+        debounceId = null;
+        check();
+      }, 100);
     });
 
     observer.observe(document.body, {

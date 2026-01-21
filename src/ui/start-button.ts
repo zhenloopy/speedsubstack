@@ -8,7 +8,6 @@ export class StartButton {
   private button: HTMLButtonElement | null = null;
   private currentWordButton: HTMLButtonElement | null = null;
   private callbacks: StartButtonCallbacks;
-  private hasProgress = false;
 
   constructor(callbacks: StartButtonCallbacks) {
     this.callbacks = callbacks;
@@ -54,13 +53,8 @@ export class StartButton {
   }
 
   setHasProgress(hasProgress: boolean): void {
-    this.hasProgress = hasProgress;
     if (this.currentWordButton) {
-      if (hasProgress) {
-        this.currentWordButton.classList.remove('hidden');
-      } else {
-        this.currentWordButton.classList.add('hidden');
-      }
+      this.currentWordButton.classList.toggle('hidden', !hasProgress);
     }
   }
 

@@ -7,6 +7,7 @@ export class Overlay {
   private fontSize: number = 64;
   private titleDisplay: boolean = true;
   private headingDisplay: boolean = false;
+  private surroundingWords: number = 0;
 
   create(): void {
     if (this.overlay) return;
@@ -44,10 +45,10 @@ export class Overlay {
     const shortcuts = document.createElement('div');
     shortcuts.id = 'speedsubstack-shortcuts';
     shortcuts.innerHTML = `
-      <kbd>Space</kbd> Play/Pause<br>
-      <kbd>←</kbd><kbd>→</kbd> Skip<br>
-      <kbd>↑</kbd><kbd>↓</kbd> WPM<br>
-      <kbd>Esc</kbd> Close
+      <div><kbd>Space</kbd> Play/Pause</div>
+      <div><kbd>←</kbd><kbd>→</kbd> Skip</div>
+      <div><kbd>↑</kbd><kbd>↓</kbd> WPM</div>
+      <div><kbd>Esc</kbd> Close</div>
     `;
 
     this.overlay.appendChild(closeButton);
@@ -72,9 +73,83 @@ export class Overlay {
     return this.overlay?.classList.contains('visible') ?? false;
   }
 
-  displayWord(word: string): void {
-    if (!this.wordElement) return;
-    this.wordElement.textContent = word;
+  displayWord(word: string, prevWords: string[] = [], nextWords: string[] = []): void {
+    if (!this.wordElement || !this.wordContainer) return;
+    
+    const orpIndex = this.calculateORPIndex(word.length);
+    const beforeORP = word.slice(0, orpIndex);
+    const orpChar = word[orpIndex] || '';
+    const afterORP = word.slice(orpIndex + 1);
+    
+    // Clear existing content safely
+    this.wordElement.textContent = '';
+    
+    // Build left side
+    const leftSpan = document.createElement('span');
+    leftSpan.className = 'word-left';
+    if (prevWords.length > 0) {
+      const dimmed = document.createElement('span');
+      dimmed.className = 'dimmed';
+      dimmed.textContent = prevWords.join(' ');
+      leftSpan.appendChild(dimmed);
+      const gap = document.createElement('span');
+      gap.className = 'word-gap';
+      leftSpan.appendChild(gap);
+    }
+    leftSpan.appendChild(document.createTextNode(beforeORP));
+    
+    // ORP character
+    const orpSpan = document.createElement('span');
+    orpSpan.className = 'orp';
+    orpSpan.textContent = orpChar;
+    
+    // Build right side
+    const rightSpan = document.createElement('span');
+    rightSpan.className = 'word-right';
+    rightSpan.appendChild(document.createTextNode(afterORP));
+    if (nextWords.length > 0) {
+      const gap = document.createElement('span');
+      gap.className = 'word-gap';
+      rightSpan.appendChild(gap);
+      const dimmed = document.createElement('span');
+      dimmed.className = 'dimmed';
+      dimmed.textContent = nextWords.join(' ');
+      rightSpan.appendChild(dimmed);
+    }
+    
+    this.wordElement.appendChild(leftSpan);
+    this.wordElement.appendChild(orpSpan);
+    this.wordElement.appendChild(rightSpan);
+    
+    // Center the ORP character precisely
+    this.centerORP();
+  }
+
+  private centerORP(): void {
+    if (!this.wordElement || !this.wordContainer) return;
+    
+    const orp = this.wordElement.querySelector('.orp') as HTMLElement;
+    if (!orp) return;
+    
+    // Reset transform first to get accurate measurements
+    this.wordElement.style.transform = '';
+    
+    const orpRect = orp.getBoundingClientRect();
+    const containerRect = this.wordContainer.getBoundingClientRect();
+    const orpCenter = orpRect.left + orpRect.width / 2;
+    const containerCenter = containerRect.left + containerRect.width / 2;
+    const offset = containerCenter - orpCenter;
+    
+    this.wordElement.style.transform = `translateX(${offset}px)`;
+  }
+
+  private calculateORPIndex(length: number): number {
+    // ORP is typically around 1/3 into the word
+    if (length <= 1) return 0;
+    if (length <= 5) return 1;
+    if (length <= 9) return 2;
+    if (length <= 13) return 3;
+    return 4;
   }
 
   setFontSize(fontSize: number): void {
@@ -108,6 +183,10 @@ export class Overlay {
     if (this.headingElement) {
       this.headingElement.style.display = enabled ? 'block' : 'none';
     }
+  }
+
+  setSurroundingWords(count: number): void {
+    this.surroundingWords = count;
   }
 
   getElement(): HTMLDivElement | null {

@@ -1,4 +1,4 @@
-import { tokenizeText, cleanText } from './word-tokenizer';
+import { cleanText } from './word-tokenizer';
 
 export interface ExtractedWord {
   word: string;
@@ -20,22 +20,14 @@ export interface ExtractionResult {
   articleTitle: string | null;
 }
 
-const SKIP_SELECTORS = [
-  'script',
-  'style',
-  'noscript',
-  'iframe',
-  'figure',
-  'img',
-  '.subscription-widget',
-  '.share-dialog',
-  '.post-footer',
-  '.comments-section',
-  'button',
-  '[role="button"]',
-  'code',
-  'pre',
-];
+// Tags to skip - use Set for O(1) lookup
+const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'FIGURE', 'IMG', 'BUTTON', 'CODE', 'PRE']);
+
+// Class-based selectors that need closest() check
+const SKIP_CLASSES = ['subscription-widget', 'share-dialog', 'post-footer', 'comments-section'];
+
+// Combined selector for closest() - built once
+const SKIP_ANCESTOR_SELECTOR = SKIP_CLASSES.map(c => `.${c}`).join(',') + ',[role="button"]';
 
 const BLOCK_ELEMENTS = new Set([
   'P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
@@ -43,6 +35,7 @@ const BLOCK_ELEMENTS = new Set([
 ]);
 
 const HEADING_ELEMENTS = new Set(['H2', 'H3', 'H4', 'H5', 'H6']);
+const HEADING_CLASSES = ['header-anchor-post'];
 
 // Selectors to find the article title on Substack pages
 const TITLE_SELECTORS = [
@@ -54,9 +47,23 @@ const TITLE_SELECTORS = [
 ];
 
 function shouldSkipElement(element: Element): boolean {
-  for (const selector of SKIP_SELECTORS) {
-    if (element.matches(selector)) return true;
-    if (element.closest(selector)) return true;
+  // Fast tag check first (O(1))
+  if (SKIP_TAGS.has(element.tagName)) return true;
+  
+  // Single closest() call with combined selector
+  if (element.closest(SKIP_ANCESTOR_SELECTOR)) return true;
+  
+  return false;
+}
+
+function isHeadingElement(element: Element): boolean {
+  if (HEADING_ELEMENTS.has(element.tagName)) {
+    return true;
+  }
+  for (const className of HEADING_CLASSES) {
+    if (element.classList.contains(className)) {
+      return true;
+    }
   }
   return false;
 }
@@ -64,7 +71,7 @@ function shouldSkipElement(element: Element): boolean {
 function findHeadingAncestor(element: Element): Element | null {
   let current: Element | null = element;
   while (current) {
-    if (HEADING_ELEMENTS.has(current.tagName)) {
+    if (isHeadingElement(current)) {
       return current;
     }
     current = current.parentElement;
@@ -153,8 +160,18 @@ function collectTextNodes(container: HTMLElement): TextNodeInfo[] {
   return textNodes;
 }
 
+// Check if a string is only punctuation (no letters or numbers)
+function isPunctuationOnly(str: string): boolean {
+  return /^[^\p{L}\p{N}]+$/u.test(str);
+}
+
+// Check if a string starts with connecting punctuation (hyphen, en-dash, em-dash)
+function startsWithConnector(str: string): boolean {
+  return /^[-–—]/.test(str);
+}
+
 export function extractArticleContent(container: HTMLElement): ExtractionResult {
-  const words: ExtractedWord[] = [];
+  const rawWords: ExtractedWord[] = [];
   const paragraphStartIndices: number[] = [];
   let wordIndex = 0;
   let paragraphIndex = 0;
@@ -162,9 +179,6 @@ export function extractArticleContent(container: HTMLElement): ExtractionResult 
 
   const textNodes = collectTextNodes(container);
   const articleTitle = findArticleTitle();
-
-  console.log('[SpeedSubstack] Found', textNodes.length, 'text nodes to process');
-  console.log('[SpeedSubstack] Article title:', articleTitle);
 
   for (const { node, blockAncestor, headingText } of textNodes) {
     const rawText = node.textContent || '';
@@ -181,17 +195,17 @@ export function extractArticleContent(container: HTMLElement): ExtractionResult 
     // Find word boundaries in the original text node
     const wordRegex = /\S+/g;
     let match;
-    
+
     while ((match = wordRegex.exec(rawText)) !== null) {
       const word = match[0];
       const startOffset = match.index;
       const endOffset = startOffset + word.length;
 
-      words.push({
+      rawWords.push({
         word,
         index: wordIndex,
         paragraphIndex,
-        isParagraphStart: words.length === 0 || 
+        isParagraphStart: rawWords.length === 0 ||
           (paragraphStartIndices.length > 0 && paragraphStartIndices[paragraphStartIndices.length - 1] === wordIndex),
         textNode: node,
         startOffset,
@@ -203,11 +217,38 @@ export function extractArticleContent(container: HTMLElement): ExtractionResult 
     }
   }
 
-  console.log('[SpeedSubstack] Extracted', words.length, 'words from', paragraphStartIndices.length, 'paragraphs');
+  // Post-process: merge punctuation-only tokens with adjacent words
+  // This handles cases like <em>Empirically</em>, where the comma ends up in a separate text node
+  const words: ExtractedWord[] = [];
+  for (let i = 0; i < rawWords.length; i++) {
+    const current = rawWords[i];
+    const prev = words[words.length - 1];
+
+    // If current is punctuation-only or starts with a connector (hyphen), merge with previous word
+    if (prev && (isPunctuationOnly(current.word) || startsWithConnector(current.word))) {
+      // Merge: append current word to previous
+      prev.word = prev.word + current.word;
+      // Keep the original textNode/offsets from the first part for highlighting
+      // The highlighting will only show the first part, which is acceptable
+    } else {
+      // Re-index the word
+      current.index = words.length;
+      words.push(current);
+    }
+  }
+
+  // Update paragraph start indices to account for merged words
+  // We need to recalculate based on actual word indices
+  const updatedParagraphStarts: number[] = [];
+  for (const word of words) {
+    if (word.isParagraphStart) {
+      updatedParagraphStarts.push(word.index);
+    }
+  }
 
   return {
     words,
-    paragraphStartIndices,
+    paragraphStartIndices: updatedParagraphStarts,
     totalWords: words.length,
     articleTitle,
   };

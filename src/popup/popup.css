@@ -1,3 +1,8 @@
+:root {
+  --substack-orange: #FF6719;
+  --substack-orange-hover: #E55A15;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -9,7 +14,7 @@ body {
   max-height: 500px;
   overflow-y: auto;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  background: #1a1a2e;
+  background: #000000;
   color: #ffffff;
 }
 
@@ -17,11 +22,43 @@ body {
   padding: 20px;
 }
 
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
 h1 {
   font-size: 20px;
   font-weight: 700;
-  margin-bottom: 4px;
-  color: #ff6b6b;
+  color: var(--substack-orange);
+}
+
+.power-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.power-btn {
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.power-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.power-btn.active {
+  background: var(--substack-orange);
+  color: white;
 }
 
 .tagline {
@@ -64,7 +101,7 @@ input[type="range"]::-webkit-slider-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #ff6b6b;
+  background: var(--substack-orange);
   cursor: pointer;
 }
 
@@ -72,7 +109,7 @@ input[type="range"]::-moz-range-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #ff6b6b;
+  background: var(--substack-orange);
   cursor: pointer;
   border: none;
 }
@@ -111,7 +148,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .mode-btn.active {
-  background: #ff6b6b;
+  background: var(--substack-orange);
   color: white;
 }
 
@@ -187,4 +224,53 @@ input[type="range"]::-moz-range-thumb {
   font-family: inherit;
   font-size: 11px;
   text-align: center;
+}
+
+.color-input-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#theme-color {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+#theme-color:focus {
+  border-color: var(--substack-orange);
+}
+
+#theme-color::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.color-preview {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: var(--substack-orange);
+  flex-shrink: 0;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin-right: 8px;
+  accent-color: var(--substack-orange);
+}
+
+.setting-group label {
+  display: flex;
+  align-items: center;
 }

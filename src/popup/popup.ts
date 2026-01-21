@@ -1,6 +1,8 @@
 import { loadSettings, saveSetting, resetAllSettings, DEFAULT_SETTINGS, type Settings } from '../storage/settings';
 
 class PopupController {
+  private powerOnBtn: HTMLButtonElement;
+  private powerOffBtn: HTMLButtonElement;
   private wpmSlider: HTMLInputElement;
   private wpmValue: HTMLElement;
   private fontSizeSlider: HTMLInputElement;
@@ -19,12 +21,18 @@ class PopupController {
   private paragraphRampUpGroup: HTMLElement;
   private titleDisplayCheckbox: HTMLInputElement;
   private headingDisplayCheckbox: HTMLInputElement;
+  private surroundingWordsSlider: HTMLInputElement;
+  private surroundingWordsValue: HTMLElement;
+  private themeColorInput: HTMLInputElement;
+  private colorPreview: HTMLElement;
   private modeManualBtn: HTMLButtonElement;
   private modeAutoBtn: HTMLButtonElement;
   private modeHint: HTMLElement;
   private resetBtn: HTMLButtonElement;
 
   constructor() {
+    this.powerOnBtn = document.getElementById('power-on') as HTMLButtonElement;
+    this.powerOffBtn = document.getElementById('power-off') as HTMLButtonElement;
     this.wpmSlider = document.getElementById('default-wpm') as HTMLInputElement;
     this.wpmValue = document.getElementById('wpm-value') as HTMLElement;
     this.fontSizeSlider = document.getElementById('font-size') as HTMLInputElement;
@@ -43,6 +51,10 @@ class PopupController {
     this.paragraphRampUpGroup = document.getElementById('paragraph-ramp-up-group') as HTMLElement;
     this.titleDisplayCheckbox = document.getElementById('title-display') as HTMLInputElement;
     this.headingDisplayCheckbox = document.getElementById('heading-display') as HTMLInputElement;
+    this.surroundingWordsSlider = document.getElementById('surrounding-words') as HTMLInputElement;
+    this.surroundingWordsValue = document.getElementById('surrounding-words-value') as HTMLElement;
+    this.themeColorInput = document.getElementById('theme-color') as HTMLInputElement;
+    this.colorPreview = document.getElementById('color-preview') as HTMLElement;
     this.modeManualBtn = document.getElementById('mode-manual') as HTMLButtonElement;
     this.modeAutoBtn = document.getElementById('mode-auto') as HTMLButtonElement;
     this.modeHint = document.getElementById('mode-hint') as HTMLElement;
@@ -54,10 +66,12 @@ class PopupController {
   private async init(): Promise<void> {
     const settings = await loadSettings();
     this.applySettings(settings);
+    this.applyThemeColor(settings.themeColor);
     this.setupEventListeners();
   }
 
   private applySettings(settings: Settings): void {
+    this.setEnabled(settings.enabled);
     this.wpmSlider.value = settings.wpm.toString();
     this.wpmValue.textContent = settings.wpm.toString();
     this.fontSizeSlider.value = settings.fontSize.toString();
@@ -75,6 +89,10 @@ class PopupController {
     this.paragraphRampUpCheckbox.checked = settings.paragraphRampUp;
     this.titleDisplayCheckbox.checked = settings.titleDisplay;
     this.headingDisplayCheckbox.checked = settings.headingDisplay;
+    this.surroundingWordsSlider.value = settings.surroundingWords.toString();
+    this.surroundingWordsValue.textContent = settings.surroundingWords.toString();
+    this.themeColorInput.value = settings.themeColor;
+    this.colorPreview.style.background = settings.themeColor;
     this.updateParagraphPauseOptionsVisibility(settings.paragraphPauseEnabled);
     this.setActivationMode(settings.activationMode);
   }
@@ -93,6 +111,16 @@ class PopupController {
     }
   }
 
+  private setEnabled(enabled: boolean): void {
+    if (enabled) {
+      this.powerOnBtn.classList.add('active');
+      this.powerOffBtn.classList.remove('active');
+    } else {
+      this.powerOffBtn.classList.add('active');
+      this.powerOnBtn.classList.remove('active');
+    }
+  }
+
   private setActivationMode(mode: 'auto' | 'manual'): void {
     if (mode === 'manual') {
       this.modeManualBtn.classList.add('active');
@@ -106,6 +134,16 @@ class PopupController {
   }
 
   private setupEventListeners(): void {
+    this.powerOnBtn.addEventListener('click', async () => {
+      this.setEnabled(true);
+      await saveSetting('enabled', true);
+    });
+
+    this.powerOffBtn.addEventListener('click', async () => {
+      this.setEnabled(false);
+      await saveSetting('enabled', false);
+    });
+
     this.wpmSlider.addEventListener('input', () => {
       const wpm = parseInt(this.wpmSlider.value, 10);
       this.wpmValue.textContent = wpm.toString();
@@ -192,6 +230,36 @@ class PopupController {
       await saveSetting('headingDisplay', enabled);
     });
 
+    this.surroundingWordsSlider.addEventListener('input', () => {
+      const surroundingWords = parseInt(this.surroundingWordsSlider.value, 10);
+      this.surroundingWordsValue.textContent = surroundingWords.toString();
+    });
+
+    this.surroundingWordsSlider.addEventListener('change', async () => {
+      const surroundingWords = parseInt(this.surroundingWordsSlider.value, 10);
+      await saveSetting('surroundingWords', surroundingWords);
+    });
+
+    this.themeColorInput.addEventListener('input', () => {
+      const color = this.themeColorInput.value.trim();
+      if (this.isValidHexColor(color)) {
+        this.colorPreview.style.background = color;
+      }
+    });
+
+    this.themeColorInput.addEventListener('change', async () => {
+      const color = this.themeColorInput.value.trim();
+      if (this.isValidHexColor(color)) {
+        await saveSetting('themeColor', color.toUpperCase());
+        this.colorPreview.style.background = color;
+        this.applyThemeColor(color);
+      } else {
+        const settings = await loadSettings();
+        this.themeColorInput.value = settings.themeColor;
+        this.colorPreview.style.background = settings.themeColor;
+      }
+    });
+
     this.modeManualBtn.addEventListener('click', async () => {
       this.setActivationMode('manual');
       await saveSetting('activationMode', 'manual');
@@ -206,6 +274,35 @@ class PopupController {
       await resetAllSettings();
       this.applySettings(DEFAULT_SETTINGS);
     });
+  }
+
+  private isValidHexColor(color: string): boolean {
+    return /^#[0-9A-Fa-f]{6}$/.test(color);
+  }
+
+  private applyThemeColor(color: string): void {
+    document.documentElement.style.setProperty('--substack-orange', color);
+    const darkerColor = this.adjustColorBrightness(color, -15);
+    document.documentElement.style.setProperty('--substack-orange-hover', darkerColor);
+  }
+
+  private adjustColorBrightness(hex: string, percent: number): string {
+    const cleanHex = hex.replace('#', '');
+    const r = parseInt(cleanHex.substring(0, 2), 16);
+    const g = parseInt(cleanHex.substring(2, 4), 16);
+    const b = parseInt(cleanHex.substring(4, 6), 16);
+    
+    const adjust = (value: number) => {
+      const adjusted = value + (value * percent / 100);
+      return Math.max(0, Math.min(255, Math.round(adjusted)));
+    };
+    
+    const newR = adjust(r);
+    const newG = adjust(g);
+    const newB = adjust(b);
+    
+    const toHex = (value: number) => value.toString(16).padStart(2, '0');
+    return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
   }
 }
 

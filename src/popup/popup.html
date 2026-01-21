@@ -8,13 +8,19 @@
 </head>
 <body>
   <div class="popup-container">
-    <h1>SpeedSubstack</h1>
+    <div class="header-row">
+      <h1>SpeedSubstack</h1>
+      <div class="power-toggle">
+        <button id="power-on" class="power-btn active">On</button>
+        <button id="power-off" class="power-btn">Off</button>
+      </div>
+    </div>
     <p class="tagline">Speed reading for Substack</p>
 
     <div class="setting-group">
       <label for="default-wpm">Target Speed (WPM)</label>
       <div class="slider-container">
-        <input type="range" id="default-wpm" min="100" max="800" step="25" value="300">
+        <input type="range" id="default-wpm" min="100" max="1200" step="25" value="300">
         <span id="wpm-value">300</span>
       </div>
     </div>
@@ -22,8 +28,8 @@
     <div class="setting-group">
       <label for="font-size">Font Size (px)</label>
       <div class="slider-container">
-        <input type="range" id="font-size" min="32" max="128" step="4" value="92">
-        <span id="font-size-value">92</span>
+        <input type="range" id="font-size" min="24" max="80" step="4" value="60">
+        <span id="font-size-value">60</span>
       </div>
     </div>
 
@@ -40,8 +46,8 @@
       <h2>Keyboard Shortcuts</h2>
       <ul>
         <li><kbd>Space</kbd> Play/Pause</li>
-        <li><kbd>←</kbd> Rewind 10s</li>
-        <li><kbd>→</kbd> Forward 10s</li>
+        <li><kbd>←</kbd> Previous paragraph</li>
+        <li><kbd>→</kbd> Next paragraph</li>
         <li><kbd>↑</kbd> +25 WPM</li>
         <li><kbd>↓</kbd> -25 WPM</li>
         <li><kbd>Esc</kbd> Close reader</li>
@@ -78,9 +84,9 @@
       </div>
 
       <div class="setting-group">
-        <label>
+        <label for="paragraph-pause-enabled">
           <input type="checkbox" id="paragraph-pause-enabled">
-          Pause at End of Paragraphs
+          <span>Pause at End of Paragraphs</span>
         </label>
       </div>
 
@@ -93,27 +99,45 @@
       </div>
 
       <div class="setting-group" id="paragraph-ramp-up-group">
-        <label>
+        <label for="paragraph-ramp-up">
           <input type="checkbox" id="paragraph-ramp-up">
-          Paragraph Ramp Up
+          <span>Paragraph Ramp Up</span>
         </label>
         <p class="hint">Restart speed ramp after each paragraph</p>
       </div>
 
       <div class="setting-group">
-        <label>
+        <label for="title-display">
           <input type="checkbox" id="title-display" checked>
-          Title Display
+          <span>Title Display</span>
         </label>
         <p class="hint">Show article title at top of overlay</p>
       </div>
 
       <div class="setting-group">
-        <label>
-          <input type="checkbox" id="heading-display">
-          Heading Display
+        <label for="heading-display">
+          <input type="checkbox" id="heading-display" checked>
+          <span>Heading Display</span>
         </label>
         <p class="hint">Show current section heading below title</p>
+      </div>
+
+      <div class="setting-group">
+        <label for="surrounding-words">Surrounding Words</label>
+        <div class="slider-container">
+          <input type="range" id="surrounding-words" min="0" max="5" step="1" value="0">
+          <span id="surrounding-words-value">0</span>
+        </div>
+        <p class="hint">Show words before and after current word (0 = off)</p>
+      </div>
+
+      <div class="setting-group">
+        <label for="theme-color">Theme Color</label>
+        <div class="color-input-container">
+          <input type="text" id="theme-color" placeholder="#FF6719" maxlength="7" pattern="^#[0-9A-Fa-f]{6}$">
+          <div id="color-preview" class="color-preview"></div>
+        </div>
+        <p class="hint">Hex color code (e.g., #FF6719 for Substack orange)</p>
       </div>
 
       <button id="reset-defaults" class="reset-btn">Reset to Defaults</button>

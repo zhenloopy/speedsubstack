@@ -1,4 +1,5 @@
 export interface Settings {
+  enabled: boolean;
   wpm: number;
   activationMode: 'auto' | 'manual';
   fontSize: number;
@@ -10,12 +11,15 @@ export interface Settings {
   paragraphRampUp: boolean;
   titleDisplay: boolean;
   headingDisplay: boolean;
+  surroundingWords: number;
+  themeColor: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  enabled: true,
   wpm: 300,
   activationMode: 'manual',
-  fontSize: 92,
+  fontSize: 60,
   rampTime: 20,
   startingWpm: 150,
   autostartDelay: 1,
@@ -23,8 +27,12 @@ export const DEFAULT_SETTINGS: Settings = {
   paragraphPauseDuration: 0.5,
   paragraphRampUp: false,
   titleDisplay: true,
-  headingDisplay: false,
+  headingDisplay: true,
+  surroundingWords: 0,
+  themeColor: '#FF6719',
 };
+
+const SETTINGS_KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[];
 
 export async function resetAllSettings(): Promise<void> {
   return new Promise((resolve) => {
@@ -34,20 +42,12 @@ export async function resetAllSettings(): Promise<void> {
 
 export async function loadSettings(): Promise<Settings> {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['wpm', 'activationMode', 'fontSize', 'rampTime', 'startingWpm', 'autostartDelay', 'paragraphPauseEnabled', 'paragraphPauseDuration', 'paragraphRampUp', 'titleDisplay', 'headingDisplay'], (result) => {
-      resolve({
-        wpm: result.wpm ?? DEFAULT_SETTINGS.wpm,
-        activationMode: result.activationMode ?? DEFAULT_SETTINGS.activationMode,
-        fontSize: result.fontSize ?? DEFAULT_SETTINGS.fontSize,
-        rampTime: result.rampTime ?? DEFAULT_SETTINGS.rampTime,
-        startingWpm: result.startingWpm ?? DEFAULT_SETTINGS.startingWpm,
-        autostartDelay: result.autostartDelay ?? DEFAULT_SETTINGS.autostartDelay,
-        paragraphPauseEnabled: result.paragraphPauseEnabled ?? DEFAULT_SETTINGS.paragraphPauseEnabled,
-        paragraphPauseDuration: result.paragraphPauseDuration ?? DEFAULT_SETTINGS.paragraphPauseDuration,
-        paragraphRampUp: result.paragraphRampUp ?? DEFAULT_SETTINGS.paragraphRampUp,
-        titleDisplay: result.titleDisplay ?? DEFAULT_SETTINGS.titleDisplay,
-        headingDisplay: result.headingDisplay ?? DEFAULT_SETTINGS.headingDisplay,
-      });
+    chrome.storage.local.get(SETTINGS_KEYS, (result) => {
+      const settings: Record<string, unknown> = {};
+      for (const key of SETTINGS_KEYS) {
+        settings[key] = result[key] ?? DEFAULT_SETTINGS[key];
+      }
+      resolve(settings as unknown as Settings);
     });
   });
 }
@@ -71,39 +71,10 @@ export function onSettingsChange(
     if (areaName !== 'local') return;
 
     const settingsChanges: Partial<Settings> = {};
-
-    if (changes.wpm) {
-      settingsChanges.wpm = changes.wpm.newValue;
-    }
-    if (changes.activationMode) {
-      settingsChanges.activationMode = changes.activationMode.newValue;
-    }
-    if (changes.fontSize) {
-      settingsChanges.fontSize = changes.fontSize.newValue;
-    }
-    if (changes.rampTime) {
-      settingsChanges.rampTime = changes.rampTime.newValue;
-    }
-    if (changes.startingWpm) {
-      settingsChanges.startingWpm = changes.startingWpm.newValue;
-    }
-    if (changes.autostartDelay) {
-      settingsChanges.autostartDelay = changes.autostartDelay.newValue;
-    }
-    if (changes.paragraphPauseEnabled) {
-      settingsChanges.paragraphPauseEnabled = changes.paragraphPauseEnabled.newValue;
-    }
-    if (changes.paragraphPauseDuration) {
-      settingsChanges.paragraphPauseDuration = changes.paragraphPauseDuration.newValue;
-    }
-    if (changes.paragraphRampUp) {
-      settingsChanges.paragraphRampUp = changes.paragraphRampUp.newValue;
-    }
-    if (changes.titleDisplay) {
-      settingsChanges.titleDisplay = changes.titleDisplay.newValue;
-    }
-    if (changes.headingDisplay) {
-      settingsChanges.headingDisplay = changes.headingDisplay.newValue;
+    for (const key of SETTINGS_KEYS) {
+      if (changes[key]) {
+        (settingsChanges as Record<string, unknown>)[key] = changes[key].newValue;
+      }
     }
 
     if (Object.keys(settingsChanges).length > 0) {
@@ -112,8 +83,5 @@ export function onSettingsChange(
   };
 
   chrome.storage.onChanged.addListener(listener);
-
-  return () => {
-    chrome.storage.onChanged.removeListener(listener);
-  };
+  return () => chrome.storage.onChanged.removeListener(listener);
 }

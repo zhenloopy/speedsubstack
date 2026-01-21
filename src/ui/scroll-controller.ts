@@ -7,7 +7,6 @@ export class ScrollController {
   private callbacks: ScrollCallbacks;
   private isEnabled = false;
   private articleContainer: HTMLElement | null = null;
-  private lastScrollY = 0;
   private threshold = 100;
   private inReaderZone = false;
   private boundHandler: () => void;
@@ -25,7 +24,6 @@ export class ScrollController {
   enable(): void {
     if (this.isEnabled) return;
     this.isEnabled = true;
-    this.lastScrollY = window.scrollY;
     window.addEventListener('scroll', this.boundHandler, { passive: true });
   }
 
@@ -51,10 +49,8 @@ export class ScrollController {
   private processScroll(): void {
     if (!this.articleContainer) return;
 
-    const scrollY = window.scrollY;
     const articleRect = this.articleContainer.getBoundingClientRect();
-    const articleBottom = articleRect.bottom;
-    const isPastArticle = articleBottom < this.threshold;
+    const isPastArticle = articleRect.bottom < this.threshold;
 
     if (isPastArticle && !this.inReaderZone) {
       this.inReaderZone = true;
@@ -63,8 +59,6 @@ export class ScrollController {
       this.inReaderZone = false;
       this.callbacks.onScrollToArticle();
     }
-
-    this.lastScrollY = scrollY;
   }
 
   destroy(): void {

@@ -35,19 +35,17 @@ export function isPunctuationOnly(word: string): boolean {
 }
 
 export function getORPIndex(word: string): number {
-  const length = word.length;
-
-  if (length <= 1) return 0;
-  if (length <= 3) return 0;
-  if (length <= 5) return 1;
-  if (length <= 9) return 2;
-  if (length <= 13) return 3;
+  const len = word.length;
+  if (len <= 1) return 0;
+  if (len <= 3) return 1;
+  if (len <= 5) return 1;
+  if (len <= 9) return 2;
+  if (len <= 13) return 3;
   return 4;
 }
 
 export function splitAtORP(word: string): { before: string; orp: string; after: string } {
   const orpIndex = getORPIndex(word);
-
   return {
     before: word.slice(0, orpIndex),
     orp: word[orpIndex] || '',

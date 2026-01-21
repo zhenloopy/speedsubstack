@@ -20,7 +20,7 @@ export class TimingController {
   private accumulatedTime = 0;
   private rampTimeMs = 10000; // default 10 seconds
   private playStartTime = 0;
-  private paragraphStartIndices: number[] = [];
+  private paragraphStartIndices: Set<number> = new Set();
   private paragraphPauseEnabled = false;
   private paragraphPauseDurationMs = 500;
   private paragraphRampUp = false;
@@ -32,10 +32,9 @@ export class TimingController {
 
   setWords(words: ExtractedWord[], paragraphStartIndices: number[] = []): void {
     this.words = words;
-    this.paragraphStartIndices = paragraphStartIndices;
+    this.paragraphStartIndices = new Set(paragraphStartIndices);
     this.currentIndex = 0;
     this.callbacks.onProgress(0, words.length);
-    console.log('[SpeedSubstack] setWords: paragraphStartIndices =', paragraphStartIndices);
   }
 
   private getCurrentWpm(): number {
@@ -61,9 +60,7 @@ export class TimingController {
     const modifier = getWordDurationModifier(word.word);
     let interval = this.getBaseInterval() * modifier;
 
-    // Add paragraph pause if enabled and this is the last word of a paragraph
     if (this.paragraphPauseEnabled && this.isEndOfParagraph(this.currentIndex)) {
-      console.log('[SpeedSubstack] Adding paragraph pause:', this.paragraphPauseDurationMs, 'ms to interval at word', this.currentIndex);
       interval += this.paragraphPauseDurationMs;
     }
 
@@ -71,14 +68,9 @@ export class TimingController {
   }
 
   private isEndOfParagraph(index: number): boolean {
-    // Check if the next word is a paragraph start
     const nextIndex = index + 1;
-    if (nextIndex >= this.words.length) return true; // End of article
-    const isEnd = this.paragraphStartIndices.includes(nextIndex);
-    if (isEnd) {
-      console.log('[SpeedSubstack] End of paragraph at index', index, 'next starts at', nextIndex, 'pauseEnabled:', this.paragraphPauseEnabled, 'duration:', this.paragraphPauseDurationMs);
-    }
-    return isEnd;
+    if (nextIndex >= this.words.length) return true;
+    return this.paragraphStartIndices.has(nextIndex);
   }
 
   play(): void {
@@ -133,7 +125,7 @@ export class TimingController {
     }
 
     // Reset ramp if entering a new paragraph and paragraph ramp up is enabled
-    if (this.paragraphRampUp && this.paragraphStartIndices.includes(this.currentIndex)) {
+    if (this.paragraphRampUp && this.paragraphStartIndices.has(this.currentIndex)) {
       this.playStartTime = performance.now();
     }
 
@@ -159,7 +151,7 @@ export class TimingController {
   }
 
   setWpm(wpm: number): void {
-    this.targetWpm = Math.max(100, Math.min(800, wpm));
+    this.targetWpm = Math.max(100, wpm);
   }
 
   getWpm(): number {
@@ -177,7 +169,6 @@ export class TimingController {
   setParagraphPause(enabled: boolean, durationSeconds: number): void {
     this.paragraphPauseEnabled = enabled;
     this.paragraphPauseDurationMs = Math.max(0, Math.min(2, durationSeconds)) * 1000;
-    console.log('[SpeedSubstack] setParagraphPause:', enabled, durationSeconds, '-> ms:', this.paragraphPauseDurationMs);
   }
 
   setParagraphRampUp(enabled: boolean): void {

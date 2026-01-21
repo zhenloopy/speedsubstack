@@ -192,10 +192,11 @@ export class Highlighter {
     }
     this.currentWord = null;
     this.scrollContainer = null;
-    // Reset nav cache for next highlight
-    this.navsCached = false;
-    this.topNav = null;
-    this.bottomNav = null;
+    // Keep nav cache - nav elements don't change during reading session
+  }
+
+  clear(): void {
+    this.clearHighlight();
   }
 
   scrollToHighlight(): void {

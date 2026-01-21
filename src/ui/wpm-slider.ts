@@ -7,10 +7,12 @@ export class WpmSlider {
   private slider: HTMLInputElement | null = null;
   private label: HTMLSpanElement | null = null;
   private currentWpm: number;
+  private maxWpm: number;
   private callbacks: WpmSliderCallbacks;
 
-  constructor(initialWpm: number, callbacks: WpmSliderCallbacks) {
+  constructor(initialWpm: number, callbacks: WpmSliderCallbacks, maxWpm: number = 800) {
     this.currentWpm = initialWpm;
+    this.maxWpm = maxWpm;
     this.callbacks = callbacks;
   }
 
@@ -24,7 +26,7 @@ export class WpmSlider {
     this.slider.type = 'range';
     this.slider.id = 'speedsubstack-wpm-slider';
     this.slider.min = '100';
-    this.slider.max = '800';
+    this.slider.max = this.maxWpm.toString();
     this.slider.step = '25';
     this.slider.value = this.currentWpm.toString();
     this.slider.setAttribute('aria-label', 'Words per minute');
@@ -56,7 +58,7 @@ export class WpmSlider {
   }
 
   setWpm(wpm: number): void {
-    this.currentWpm = Math.max(100, Math.min(800, wpm));
+    this.currentWpm = Math.max(100, Math.min(this.maxWpm, wpm));
     if (this.slider) {
       this.slider.value = this.currentWpm.toString();
     }

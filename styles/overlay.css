@@ -56,28 +56,43 @@
 }
 
 #speedsubstack-word-container {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 1;
   width: 100%;
-  max-width: 800px;
-  padding: 0 40px;
-  contain: layout style;
+  overflow: hidden;
 }
 
 #speedsubstack-word {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
   font-weight: 500;
   color: #ffffff;
-  text-align: center;
   line-height: 1.2;
   letter-spacing: 0.02em;
   user-select: none;
-  contain: layout style;
+  white-space: nowrap;
 }
 
 #speedsubstack-word .orp {
-  color: #ff6b6b;
+  color: var(--substack-orange, #ff6b6b);
+}
+
+#speedsubstack-word .word-left,
+#speedsubstack-word .word-right {
+  display: inline;
+}
+
+#speedsubstack-word .dimmed {
+  opacity: 0.4;
+}
+
+#speedsubstack-word .word-gap {
+  display: inline-block;
+  width: 1em;
 }
 
 #speedsubstack-controls {
@@ -228,10 +243,12 @@
   position: fixed;
   bottom: 20px;
   right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
-  text-align: right;
-  line-height: 1.6;
 }
 
 #speedsubstack-shortcuts kbd {
@@ -241,6 +258,7 @@
   border-radius: 3px;
   font-family: inherit;
   margin-right: 4px;
+  vertical-align: middle;
 }
 
 .speedsubstack-nav-btn {

@@ -3,7 +3,7 @@
   "name": "SpeedSubstack",
   "version": "1.0.0",
   "description": "Speed reading for Substack articles - display words one at a time at configurable WPM",
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["storage"],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

@@ -1,5 +1,3 @@
-console.log('[SpeedSubstack] Initializing on:', window.location.href);
-
 import { waitForArticle } from './utils/substack-detector';
 import { extractArticleContent, getParagraphStart, type ExtractionResult, type ExtractedWord } from './parser/article-extractor';
 import { loadSettings, onSettingsChange, type Settings } from './storage/settings';
@@ -18,7 +16,8 @@ import { findNextParagraphIndex, findPreviousParagraphIndex } from './engine/nav
 class SpeedSubstackApp {
   private extractionResult: ExtractionResult | null = null;
   private articleContainer: HTMLElement | null = null;
-  private settings: Settings = { wpm: 300, activationMode: 'manual', fontSize: 64, rampTime: 10, startingWpm: 150, autostartDelay: 1, paragraphPauseEnabled: false, paragraphPauseDuration: 0.5, paragraphRampUp: false, titleDisplay: true, headingDisplay: false };
+  private settings: Settings = { enabled: true, wpm: 300, activationMode: 'manual', fontSize: 64, rampTime: 10, startingWpm: 150, autostartDelay: 1, paragraphPauseEnabled: false, paragraphPauseDuration: 0.5, paragraphRampUp: false, titleDisplay: true, headingDisplay: true, surroundingWords: 0, themeColor: '#FF6719' };
+  private themeStyleElement: HTMLStyleElement | null = null;
 
   private overlay: Overlay;
   private controls: Controls;
@@ -32,8 +31,9 @@ class SpeedSubstackApp {
 
   private unsubscribeSettings: (() => void) | null = null;
   private autoPlayTimer: number | null = null;
-  private showAndPlayTimer: number | null = null;
   private visibilityResumeTimer: number | null = null;
+  private navigationResumeTimer: number | null = null;
+  private wasPlayingBeforeNavigation = false;
   
   // Store bound handlers for cleanup
   private boundCloseHandler: (() => void) | null = null;
@@ -61,7 +61,7 @@ class SpeedSubstackApp {
 
     this.wpmSlider = new WpmSlider(this.settings.wpm, {
       onChange: this.handleWpmChange.bind(this),
-    });
+    }, 1200);
 
     this.startButton = new StartButton({
       onStart: this.startReading.bind(this),
@@ -90,6 +90,21 @@ class SpeedSubstackApp {
     
     // Setup lifecycle handlers
     this.setupLifecycleHandlers();
+  }
+
+  private clearAllTimers(): void {
+    if (this.autoPlayTimer !== null) {
+      clearTimeout(this.autoPlayTimer);
+      this.autoPlayTimer = null;
+    }
+    if (this.visibilityResumeTimer !== null) {
+      clearTimeout(this.visibilityResumeTimer);
+      this.visibilityResumeTimer = null;
+    }
+    if (this.navigationResumeTimer !== null) {
+      clearTimeout(this.navigationResumeTimer);
+      this.navigationResumeTimer = null;
+    }
   }
 
   private setupLifecycleHandlers(): void {
@@ -137,21 +152,39 @@ class SpeedSubstackApp {
 
   async init(): Promise<void> {
     this.settings = await loadSettings();
-    this.timingController.setWpm(this.settings.wpm);
-    this.timingController.setRampTime(this.settings.rampTime);
-    this.timingController.setParagraphPause(this.settings.paragraphPauseEnabled, this.settings.paragraphPauseDuration);
-    this.timingController.setParagraphRampUp(this.settings.paragraphRampUp);
-    this.wpmSlider.setWpm(this.settings.wpm);
-    this.overlay.setFontSize(this.settings.fontSize);
 
+    // Always set up settings change listener first
     this.unsubscribeSettings = onSettingsChange((changes) => {
+      if (changes.enabled !== undefined) {
+        const wasEnabled = this.settings.enabled;
+        this.settings.enabled = changes.enabled;
+
+        if (changes.enabled && !wasEnabled) {
+          // Turning on - show UI and optionally start reading
+          this.enableExtension();
+        } else if (!changes.enabled && wasEnabled) {
+          // Turning off - hide everything
+          this.disableExtension();
+        }
+      }
       if (changes.wpm !== undefined) {
         this.settings.wpm = changes.wpm;
         this.wpmSlider.setWpm(changes.wpm);
         this.timingController.setWpm(changes.wpm);
       }
       if (changes.activationMode !== undefined) {
+        const wasAuto = this.settings.activationMode === 'auto';
         this.settings.activationMode = changes.activationMode;
+
+        if (this.settings.enabled && this.extractionResult) {
+          if (changes.activationMode === 'auto') {
+            // Switching to auto mode - start reading
+            this.startReading();
+          } else if (wasAuto && changes.activationMode === 'manual') {
+            // Switching to manual mode - close reader if open
+            this.closeReader();
+          }
+        }
       }
       if (changes.fontSize !== undefined) {
         this.settings.fontSize = changes.fontSize;
@@ -184,22 +217,39 @@ class SpeedSubstackApp {
         this.settings.headingDisplay = changes.headingDisplay;
         this.overlay.setHeadingDisplay(changes.headingDisplay);
       }
+      if (changes.surroundingWords !== undefined) {
+        this.settings.surroundingWords = changes.surroundingWords;
+        this.overlay.setSurroundingWords(changes.surroundingWords);
+      }
+      if (changes.themeColor !== undefined) {
+        this.settings.themeColor = changes.themeColor;
+        this.applyThemeColor(changes.themeColor);
+      }
     });
+
+    if (!this.settings.enabled) {
+      return;
+    }
+
+    this.applyThemeColor(this.settings.themeColor);
+    this.timingController.setWpm(this.settings.wpm);
+    this.timingController.setRampTime(this.settings.rampTime);
+    this.timingController.setParagraphPause(this.settings.paragraphPauseEnabled, this.settings.paragraphPauseDuration);
+    this.timingController.setParagraphRampUp(this.settings.paragraphRampUp);
+    this.wpmSlider.setWpm(this.settings.wpm);
+    this.overlay.setFontSize(this.settings.fontSize);
 
     const detection = await waitForArticle();
 
     if (!detection.isArticle || !detection.articleContainer) {
-      console.log('[SpeedSubstack] Not an article page');
       return;
     }
 
-    console.log('[SpeedSubstack] Article detected');
     this.articleContainer = detection.articleContainer;
 
     this.extractionResult = extractArticleContent(this.articleContainer);
 
     if (this.extractionResult.totalWords === 0) {
-      console.log('[SpeedSubstack] No words extracted');
       return;
     }
 
@@ -209,6 +259,7 @@ class SpeedSubstackApp {
     this.overlay.create();
     this.overlay.setTitleDisplay(this.settings.titleDisplay);
     this.overlay.setHeadingDisplay(this.settings.headingDisplay);
+    this.overlay.setSurroundingWords(this.settings.surroundingWords);
     if (this.extractionResult.articleTitle) {
       this.overlay.setTitle(this.extractionResult.articleTitle);
     }
@@ -224,6 +275,7 @@ class SpeedSubstackApp {
       this.boundCloseHandler = () => this.closeReader();
       closeButton.addEventListener('click', this.boundCloseHandler);
     }
+
 
     cleanupOldProgress();
 
@@ -254,25 +306,10 @@ class SpeedSubstackApp {
     this.scrollController.enable();
     this.stateMachine.transition('paused');
     this.controls.setPlaying(false);
-    
-    // Auto-play after configurable delay
-    const delayMs = this.settings.autostartDelay * 1000;
-    if (delayMs === 0) {
-      this.timingController.play();
-      this.stateMachine.startReading();
-    } else {
-      this.autoPlayTimer = window.setTimeout(() => {
-        this.autoPlayTimer = null;
-        if (this.stateMachine.getState() === 'paused') {
-          this.timingController.play();
-          this.stateMachine.startReading();
-        }
-      }, delayMs);
-    }
+    this.scheduleAutoPlay(() => this.stateMachine.getState() === 'paused');
   }
 
   private showAndPlay(): void {
-    // If reader hasn't been started yet, start it
     if (this.stateMachine.getState() === 'idle') {
       this.startButton.hide();
       this.overlay.show();
@@ -280,44 +317,30 @@ class SpeedSubstackApp {
       this.stateMachine.transition('paused');
       this.controls.setPlaying(false);
     } else {
-      // Otherwise just show the overlay
       this.overlay.show();
       this.stateMachine.hideArticle();
     }
-    
-    // Start playing after configurable delay
+    this.scheduleAutoPlay(() => !this.timingController.getIsPlaying());
+  }
+
+  private scheduleAutoPlay(condition: () => boolean): void {
     const delayMs = this.settings.autostartDelay * 1000;
     if (delayMs === 0) {
-      if (!this.timingController.getIsPlaying()) {
-        this.timingController.play();
-        this.stateMachine.startReading();
-        this.controls.setPlaying(true);
+      if (condition()) {
+        this.resumePlayback();
       }
     } else {
-      this.showAndPlayTimer = window.setTimeout(() => {
-        this.showAndPlayTimer = null;
-        if (!this.timingController.getIsPlaying()) {
-          this.timingController.play();
-          this.stateMachine.startReading();
-          this.controls.setPlaying(true);
+      this.autoPlayTimer = window.setTimeout(() => {
+        this.autoPlayTimer = null;
+        if (condition()) {
+          this.resumePlayback();
         }
       }, delayMs);
     }
   }
 
   private closeReader(): void {
-    if (this.autoPlayTimer !== null) {
-      clearTimeout(this.autoPlayTimer);
-      this.autoPlayTimer = null;
-    }
-    if (this.showAndPlayTimer !== null) {
-      clearTimeout(this.showAndPlayTimer);
-      this.showAndPlayTimer = null;
-    }
-    if (this.visibilityResumeTimer !== null) {
-      clearTimeout(this.visibilityResumeTimer);
-      this.visibilityResumeTimer = null;
-    }
+    this.clearAllTimers();
     this.saveCurrentProgress();
     this.timingController.pause();
     this.stateMachine.stop();
@@ -328,6 +351,37 @@ class SpeedSubstackApp {
     this.startButton.show();
     // Show current word button since user has progress
     this.startButton.setHasProgress(true);
+  }
+
+  private disableExtension(): void {
+    this.clearAllTimers();
+    this.saveCurrentProgress();
+    this.timingController.pause();
+    this.stateMachine.stop();
+
+    // Hide all UI
+    this.overlay.hide();
+    this.startButton.hide();
+    this.highlighter.clear();
+    this.scrollController.disable();
+    this.keyboardHandler.disable();
+  }
+
+  private enableExtension(): void {
+    // Only enable if we have article content
+    if (!this.extractionResult) {
+      return;
+    }
+
+    // Re-enable keyboard handler
+    this.keyboardHandler.enable();
+
+    // Show appropriate UI based on activation mode
+    if (this.settings.activationMode === 'auto') {
+      this.startReading();
+    } else {
+      this.startButton.show();
+    }
   }
 
   private goToCurrentWord(): void {
@@ -341,14 +395,14 @@ class SpeedSubstackApp {
       this.timingController.pause();
       this.stateMachine.pauseReading();
     } else {
-      // Cancel auto-play timers if user manually starts playing
       if (this.autoPlayTimer !== null) {
         clearTimeout(this.autoPlayTimer);
         this.autoPlayTimer = null;
       }
-      if (this.showAndPlayTimer !== null) {
-        clearTimeout(this.showAndPlayTimer);
-        this.showAndPlayTimer = null;
+      if (this.navigationResumeTimer !== null) {
+        clearTimeout(this.navigationResumeTimer);
+        this.navigationResumeTimer = null;
+        this.wasPlayingBeforeNavigation = false;
       }
       this.timingController.play();
       this.stateMachine.startReading();
@@ -357,8 +411,24 @@ class SpeedSubstackApp {
     this.controls.setPlaying(!isPlaying);
   }
 
-  private handleWordChange(word: ExtractedWord, _index: number): void {
-    this.overlay.displayWord(word.word);
+  private handleWordChange(word: ExtractedWord, index: number): void {
+    // Get surrounding words (before and after current)
+    const prevWords: string[] = [];
+    const nextWords: string[] = [];
+    if (this.extractionResult && this.settings.surroundingWords > 0) {
+      for (let i = 1; i <= this.settings.surroundingWords; i++) {
+        const prev = this.extractionResult.words[index - i];
+        if (prev) {
+          prevWords.unshift(prev.word);
+        }
+        const next = this.extractionResult.words[index + i];
+        if (next) {
+          nextWords.push(next.word);
+        }
+      }
+    }
+    
+    this.overlay.displayWord(word.word, prevWords, nextWords);
     this.overlay.setHeading(word.currentHeading);
     this.highlighter.highlight(word);
     // Auto-scroll article to current word while overlay is visible
@@ -384,28 +454,63 @@ class SpeedSubstackApp {
     this.timingController.setWpm(wpm);
   }
 
-  private handleRewind(): void {
+  private navigateParagraph(direction: 'forward' | 'backward'): void {
     if (!this.extractionResult) return;
+
+    const isCurrentlyPlaying = this.timingController.getIsPlaying();
+    if (this.navigationResumeTimer === null) {
+      this.wasPlayingBeforeNavigation = isCurrentlyPlaying;
+    }
+
+    if (this.navigationResumeTimer !== null) {
+      clearTimeout(this.navigationResumeTimer);
+      this.navigationResumeTimer = null;
+    }
+
+    if (isCurrentlyPlaying) {
+      this.timingController.pause();
+      this.stateMachine.pauseReading();
+      this.controls.setPlaying(false);
+    }
+
     const currentIndex = this.timingController.getIndex();
-    const previousIndex = findPreviousParagraphIndex(
-      currentIndex,
-      this.extractionResult.paragraphStartIndices
-    );
-    this.timingController.setIndex(previousIndex);
-    // Scroll to the new position
+    const newIndex = direction === 'forward'
+      ? findNextParagraphIndex(currentIndex, this.extractionResult.paragraphStartIndices)
+      : findPreviousParagraphIndex(currentIndex, this.extractionResult.paragraphStartIndices);
+    this.timingController.setIndex(newIndex);
     this.highlighter.scrollToHighlight();
+
+    if (this.wasPlayingBeforeNavigation) {
+      this.scheduleDelayedResume();
+    }
+  }
+
+  private scheduleDelayedResume(): void {
+    const delayMs = this.settings.autostartDelay * 1000;
+    if (delayMs === 0) {
+      this.resumePlayback();
+      this.wasPlayingBeforeNavigation = false;
+    } else {
+      this.navigationResumeTimer = window.setTimeout(() => {
+        this.navigationResumeTimer = null;
+        this.resumePlayback();
+        this.wasPlayingBeforeNavigation = false;
+      }, delayMs);
+    }
+  }
+
+  private resumePlayback(): void {
+    this.timingController.play();
+    this.stateMachine.startReading();
+    this.controls.setPlaying(true);
+  }
+
+  private handleRewind(): void {
+    this.navigateParagraph('backward');
   }
 
   private handleForward(): void {
-    if (!this.extractionResult) return;
-    const currentIndex = this.timingController.getIndex();
-    const nextIndex = findNextParagraphIndex(
-      currentIndex,
-      this.extractionResult.paragraphStartIndices
-    );
-    this.timingController.setIndex(nextIndex);
-    // Scroll to the new position
-    this.highlighter.scrollToHighlight();
+    this.navigateParagraph('forward');
   }
 
   private handleScrollToArticle(): void {
@@ -436,6 +541,49 @@ class SpeedSubstackApp {
     }
   }
 
+  private applyThemeColor(color: string): void {
+    // Create or update the theme style element
+    if (!this.themeStyleElement) {
+      this.themeStyleElement = document.createElement('style');
+      this.themeStyleElement.id = 'speedsubstack-theme';
+      document.head.appendChild(this.themeStyleElement);
+    }
+
+    // Calculate a slightly darker shade for hover states
+    const darkerColor = this.adjustColorBrightness(color, -15);
+
+    this.themeStyleElement.textContent = `
+      :root {
+        --substack-orange: ${color} !important;
+        --substack-orange-hover: ${darkerColor} !important;
+      }
+    `;
+  }
+
+  private adjustColorBrightness(hex: string, percent: number): string {
+    // Remove # if present
+    const cleanHex = hex.replace('#', '');
+    
+    // Parse RGB values
+    const r = parseInt(cleanHex.substring(0, 2), 16);
+    const g = parseInt(cleanHex.substring(2, 4), 16);
+    const b = parseInt(cleanHex.substring(4, 6), 16);
+    
+    // Adjust brightness
+    const adjust = (value: number) => {
+      const adjusted = value + (value * percent / 100);
+      return Math.max(0, Math.min(255, Math.round(adjusted)));
+    };
+    
+    const newR = adjust(r);
+    const newG = adjust(g);
+    const newB = adjust(b);
+    
+    // Convert back to hex
+    const toHex = (value: number) => value.toString(16).padStart(2, '0');
+    return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
+  }
+
   private saveCurrentProgress(): void {
     if (!this.extractionResult) return;
 
@@ -449,20 +597,7 @@ class SpeedSubstackApp {
   }
 
   destroy(): void {
-    // Clear timers
-    if (this.autoPlayTimer !== null) {
-      clearTimeout(this.autoPlayTimer);
-      this.autoPlayTimer = null;
-    }
-    if (this.showAndPlayTimer !== null) {
-      clearTimeout(this.showAndPlayTimer);
-      this.showAndPlayTimer = null;
-    }
-    if (this.visibilityResumeTimer !== null) {
-      clearTimeout(this.visibilityResumeTimer);
-      this.visibilityResumeTimer = null;
-    }
-
+    this.clearAllTimers();
     this.saveCurrentProgress();
     this.unsubscribeSettings?.();
     
@@ -471,6 +606,7 @@ class SpeedSubstackApp {
     if (closeButton && this.boundCloseHandler) {
       closeButton.removeEventListener('click', this.boundCloseHandler);
     }
+    
     
     // Remove lifecycle listeners
     if (this.boundVisibilityHandler) {
@@ -489,6 +625,11 @@ class SpeedSubstackApp {
     this.wpmSlider.destroy();
     this.startButton.destroy();
     this.highlighter.destroy();
+    
+    // Remove theme style element
+    if (this.themeStyleElement && this.themeStyleElement.parentNode) {
+      this.themeStyleElement.parentNode.removeChild(this.themeStyleElement);
+    }
   }
 }
 
